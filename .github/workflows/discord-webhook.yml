@@ -1,0 +1,80 @@
+name: Discord Webhook Notification
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, closed, reopened]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  issues:
+    types: [opened, closed, reopened]
+  release:
+    types: [published, edited, released]
+  check_run:
+    types: [completed]
+  check_suite:
+    types: [completed]
+  deployment:
+    types: [created, completed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send notification to Discord for Push
+        if: github.event_name == 'push'
+        run: |
+          curl -H "Content-Type: application/json" \
+               -d "{\"content\": \"New push event in repository: ${{ github.repository }} by ${{ github.actor }}.\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Send notification to Discord for Pull Request
+        if: github.event_name == 'pull_request'
+        run: |
+          curl -H "Content-Type: application/json" \
+               -d "{\"content\": \"New pull request event in repository: ${{ github.repository }} by ${{ github.actor }}.\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Send notification to Discord for Pull Request Review
+        if: github.event_name == 'pull_request_review'
+        run: |
+          curl -H "Content-Type: application/json" \
+               -d "{\"content\": \"New pull request review event in repository: ${{ github.repository }} by ${{ github.actor }}.\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Send notification to Discord for Issues
+        if: github.event_name == 'issues'
+        run: |
+          curl -H "Content-Type: application/json" \
+               -d "{\"content\": \"New issue event in repository: ${{ github.repository }} by ${{ github.actor }}.\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Send notification to Discord for Release
+        if: github.event_name == 'release'
+        run: |
+          curl -H "Content-Type: application/json" \
+               -d "{\"content\": \"New release event in repository: ${{ github.repository }} by ${{ github.actor }}.\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Send notification to Discord for Check Run
+        if: github.event_name == 'check_run'
+        run: |
+          curl -H "Content-Type: application/json" \
+               -d "{\"content\": \"New check run completed in repository: ${{ github.repository }}.\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Send notification to Discord for Check Suite
+        if: github.event_name == 'check_suite'
+        run: |
+          curl -H "Content-Type: application/json" \
+               -d "{\"content\": \"New check suite completed in repository: ${{ github.repository }}.\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Send notification to Discord for Deployment
+        if: github.event_name == 'deployment'
+        run: |
+          curl -H "Content-Type: application/json" \
+               -d "{\"content\": \"New deployment event in repository: ${{ github.repository }}.\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
