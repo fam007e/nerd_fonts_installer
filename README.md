@@ -72,6 +72,10 @@ The binary version works exactly like the shell script and does not require any 
    ```sh
    curl -sSLo nerdfonts-installer https://github.com/fam007e/nerd_fonts_installer/blob/main/release/nerdfonts-installer && chmod +x nerdfonts-installer && ./nerdfonts-installer
    ```
+## Installation from Arch AUR
+<a href="https://repology.org/project/nerdfonts-installer/versions">
+    <img src="https://github.com/ryanoasis/nerd-fonts/blob/master/images/nerd-fonts-logo.svg" alt="Packaging status" align="right">
+</a>
 
 ## Customization
 
