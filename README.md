@@ -8,7 +8,7 @@ Additionally, the compiled binary version of the script (`nerdfonts-installer`) 
 
 ## Features
 
-- Detects the operating system and selects the appropriate package manager.
+- Detects the operating system and selects the appropriate package manager. Currently supports Arch, Debian, Ubuntu, Fedora, Centos, Red Hat, and Linux Mint.
 - Installs dependencies (`curl`, `unzip`, `fontconfig`) if not already present.
 - Provides a list of Nerd Fonts to choose from, displayed in a paginated three-column format.
 - Downloads and installs selected fonts into `~/.local/share/fonts`.
