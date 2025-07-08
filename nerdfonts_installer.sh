@@ -14,7 +14,7 @@ detect_os_and_set_package_manager() {
             centos|rhel)
                 PKG_MANAGER="sudo yum install -y"
                 ;;
-            arch)
+            arch|manjaro)
                 PKG_MANAGER="sudo pacman -Syu --noconfirm"
                 ;;
             *)
