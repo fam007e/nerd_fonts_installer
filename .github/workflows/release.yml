@@ -49,7 +49,7 @@ jobs:
             if [ $counter -eq 1 ]; then
               version="${base_version}.${commit_count}"
             else
-              version="${base_version}.${commit_count}-${counter}"
+              version="${base_version}.${commit_count}000${counter}"
             fi
             if gh release view "v${version}" >/dev/null 2>&1; then
               echo "Release v${version} already exists, incrementing..."
