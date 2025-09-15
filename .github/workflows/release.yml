@@ -70,6 +70,7 @@ jobs:
 
     - name: Create release
       id: create_release
+      if: github.event_name == 'release'
       run: |
         version="${{ steps.version.outputs.version }}"
         changelog=$(git log --oneline --pretty=format:"* %s (%h)" | head -n 20)
