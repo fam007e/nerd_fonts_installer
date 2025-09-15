@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - nerdfonts_installer.sh
+      - nerdfonts_installer.c
 
 jobs:
   release:
@@ -18,7 +18,7 @@ jobs:
     - name: Set up Environment
       run: |
         sudo apt-get update
-        sudo apt-get install -y shc
+        sudo apt-get install -y libcurl4-openssl-dev libjansson-dev build-essential
 
     - name: Install GitHub CLI
       run: |
@@ -56,7 +56,8 @@ jobs:
     - name: Build binary
       run: |
         mkdir -p release
-        shc -f nerdfonts_installer.sh -o release/nerdfonts-installer
+        make
+        mv nerdfonts-installer release/nerdfonts-installer
         chmod +x release/nerdfonts-installer
 
     - name: Create tarball
