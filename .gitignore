@@ -1,0 +1,12 @@
+# Compiled C binary
+nerdfonts-installer
+*.o
+
+# Release artifacts
+release/nerdfonts-installer
+release/*.tar.gz
+release/changelog.txt
+release/version.txt
+
+# Temporary directory
+tmp/
