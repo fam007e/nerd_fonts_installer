@@ -1,8 +1,6 @@
 # NerdFonts Installer
 
-This repository contains a shell script (`nerdfonts_installer.sh`) for downloading and installing a selection of popular Nerd Fonts on Linux systems. The script automatically detects the operating system, installs necessary dependencies, and provides a user-friendly menu to select and install the desired fonts.
-
-Additionally, the compiled binary version of the script (`nerdfonts-installer`) created using `shc` allows you to run the installer without needing to interpret the script.
+This repository contains a C program (`nerdfonts-installer`) for downloading and installing a selection of popular Nerd Fonts on Linux systems. The program automatically detects the operating system, installs necessary dependencies, and provides a user-friendly menu to select and install the desired fonts. This C implementation offers improved stability and performance compared to a shell script.
 
 ---
 
@@ -18,59 +16,26 @@ Additionally, the compiled binary version of the script (`nerdfonts-installer`) 
 
 ## Usage
 
-### 1. Using the Shell Script
+To use the `nerdfonts-installer` C binary:
 
-#### Prerequisites
-
-- `curl`, `unzip`, and `fontconfig` installed on your system (the script installs these automatically if missing).
-
-#### Running the Script
-
-1. Clone or download the script:
-
-   ```sh
-   git clone https://github.com/fam007e/nerd_fonts_installer.git
-   cd nerd_fonts_installer
-   ```
-2. Make the script executable:
-   ```sh
-   chmod +x nerdfonts_installer.sh
-   ```
-3. Run the script:
-   ```sh
-   ./nerdfonts_installer.sh
-   ```
-
-   
-4. Follow the prompts to select and install fonts.
-
-### 2. Using the Binary (`nerdfonts-installer`)
-
-If you have the precompiled binary, you can run it directly:
-
-1. Move the binary to your desired directory:
+1. Move the binary to your desired directory (e.g., `/usr/local/bin/`):
    ```sh
    mv release/nerdfonts-installer /usr/local/bin/
    ```
-2. Make it executable if needed:
+2. Make it executable:
    ```sh
    chmod +x /usr/local/bin/nerdfonts-installer
    ```
-3. Run the binary:
+3. Run the installer:
    ```sh
    nerdfonts-installer
    ```
-The binary version works exactly like the shell script and does not require any shell interpretation.
 
-### 3. Or, run it directly from the terminal `shell`
+### Run directly from the terminal
 
-- Download and run the Installer Script:
+You can download and execute the precompiled binary directly:
    ```sh
-   curl -sS https://raw.githubusercontent.com/fam007e/nerd_fonts_installer/main/nerdfonts_installer.sh | sh
-   ```  
-- Alternatively, you can download and execute the precompiled binary:
-   ```sh
-   curl -sSLo nerdfonts-installer https://github.com/fam007e/nerd_fonts_installer/blob/main/release/nerdfonts-installer && chmod +x nerdfonts-installer && ./nerdfonts-installer
+   curl -sSLo nerdfonts-installer https://github.com/fam007e/nerd_fonts_installer/releases/latest/download/nerdfonts-installer && chmod +x nerdfonts-installer && ./nerdfonts-installer
    ```
 
 ## Installation from Arch AUR
@@ -90,11 +55,7 @@ Nerd Fonts Installer is also available as a package in various repositories:
 </tr>
 </table>
 
-## Customization
 
-The script can easily be modified to add additional fonts. To add a font:
-1. Edit the fonts variable in the script.
-2. Add the new font name to the list in the same format as the others.
 
 ## License
 This project is licensed under the [MIT License](LICENSE).
