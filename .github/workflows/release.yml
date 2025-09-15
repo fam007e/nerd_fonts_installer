@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - nerdfonts_installer.c
+  release:
+    types: [published, edited, released]
 
 jobs:
   release:
