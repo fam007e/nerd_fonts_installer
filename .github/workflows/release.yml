@@ -6,8 +6,11 @@ on:
       - main
     paths:
       - nerdfonts_installer.c
+    tags:
+      - 'v*.*.*.*'  # Triggers on tags like v2025.09.16.1
   release:
     types: [published, edited, released]
+  workflow_dispatch:  # For manual testing
 
 jobs:
   release:
@@ -16,6 +19,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 0  # Fetch all history for changelog
 
     - name: Set up Environment
       run: |
@@ -30,30 +35,32 @@ jobs:
       run: |
         echo "${{ secrets.MY_GITHUB_TOKEN }}" | gh auth login --with-token
 
-    - name: Generate unique version
+    - name: Determine version
       id: version
       run: |
-        base_version=$(date +'%Y.%m.%d')
-        commit_count=$(git rev-list --count HEAD)
-        counter=1
-
-        while true; do
-          if [ $counter -eq 1 ]; then
-            version="${base_version}.${commit_count}"
-          else
-            version="${base_version}.${commit_count}-${counter}"
-          fi
-
-          # Check if release exists
-          if gh release view "v${version}" >/dev/null 2>&1; then
-            echo "Release v${version} already exists, incrementing..."
-            counter=$((counter + 1))
-          else
-            echo "Using version: ${version}"
-            echo "version=${version}" >> $GITHUB_OUTPUT
-            break
-          fi
-        done
+        if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          version="${GITHUB_REF#refs/tags/v}"  # Use tag name, e.g., 2025.09.16.1
+          echo "Using tag version: ${version}"
+        else
+          base_version=$(date +'%Y.%m.%d')
+          commit_count=$(git rev-list --count HEAD)
+          counter=1
+          while true; do
+            if [ $counter -eq 1 ]; then
+              version="${base_version}.${commit_count}"
+            else
+              version="${base_version}.${commit_count}-${counter}"
+            fi
+            if gh release view "v${version}" >/dev/null 2>&1; then
+              echo "Release v${version} already exists, incrementing..."
+              counter=$((counter + 1))
+            else
+              echo "Using generated version: ${version}"
+              break
+            fi
+          done
+        fi
+        echo "version=${version}" >> $GITHUB_OUTPUT
 
     - name: Build binary
       run: |
@@ -70,13 +77,16 @@ jobs:
 
     - name: Create release
       id: create_release
-      if: github.event_name == 'release'
       run: |
         version="${{ steps.version.outputs.version }}"
         changelog=$(git log --oneline --pretty=format:"* %s (%h)" | head -n 20)
         echo "Changelog: $changelog" > release/changelog.txt
-
-        gh release create "v${version}" release/nerdfonts-installer release/nerdfonts-installer-${version}.tar.gz release/changelog.txt --title "Release v${version}" --notes "$changelog"
+        gh release create "v${version}" \
+          release/nerdfonts-installer \
+          release/nerdfonts-installer-${version}.tar.gz \
+          release/changelog.txt \
+          --title "Release v${version}" \
+          --notes "$changelog"
 
     - name: Clean up old binaries
       run: |
