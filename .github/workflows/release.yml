@@ -60,10 +60,10 @@ jobs:
         mv nerdfonts-installer release/nerdfonts-installer
         chmod +x release/nerdfonts-installer
 
-    - name: Create tarball
+    - name: Create source tarball
       run: |
         version="${{ steps.version.outputs.version }}"
-        tar -czf "release/nerdfonts-installer-${version}.tar.gz" -C release nerdfonts-installer
+        git archive --format=tar.gz --output "release/nerdfonts-installer-${version}.tar.gz" HEAD
         echo "Version: ${version}" > release/version.txt
 
     - name: Create release
