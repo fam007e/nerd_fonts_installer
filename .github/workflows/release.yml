@@ -3,14 +3,13 @@ name: Release Binary
 on:
   push:
     branches:
-      - main
-    paths:
-      - nerdfonts_installer.c
-    tags:
-      - 'v*.*.*.*'  # Triggers on tags like v2025.09.16.1
+      - main # For CI builds on main branch
+  pull_request:
+    branches:
+      - main # For PRs targeting main
   release:
-    types: [published, edited, released]
-  workflow_dispatch:  # For manual testing
+    types: [published, edited, released] # For actual GitHub Releases
+  workflow_dispatch: # For manual testing
 
 jobs:
   release:
@@ -38,27 +37,14 @@ jobs:
     - name: Determine version
       id: version
       run: |
-        if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          version="${GITHUB_REF#refs/tags/v}"  # Use tag name, e.g., 2025.09.16.1
+        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          version="${GITHUB_REF#refs/tags/v}" # Use tag name directly
           echo "Using tag version: ${version}"
         else
-          base_version=$(date +'%Y.%m.%d')
-          commit_count=$(git rev-list --count HEAD)
-          counter=1
-          while true; do
-            if [ $counter -eq 1 ]; then
-              version="${base_version}.${commit_count}"
-            else
-              version="${base_version}.${commit_count}000${counter}"
-            fi
-            if gh release view "v${version}" >/dev/null 2>&1; then
-              echo "Release v${version} already exists, incrementing..."
-              counter=$((counter + 1))
-            else
-              echo "Using generated version: ${version}"
-              break
-            fi
-          done
+          # Generate an AUR-compatible version for non-tag builds (e.g., CI)
+          # Format: YYYY.MM.DD.HHMM.CommitCount
+          version=$(date +'%Y.%m.%d.%H%M').$(git rev-list --count HEAD)
+          echo "Using generated CI version: ${version}"
         fi
         echo "version=${version}" >> $GITHUB_OUTPUT
 
@@ -77,6 +63,7 @@ jobs:
 
     - name: Create release
       id: create_release
+      if: github.event_name == 'release'
       run: |
         version="${{ steps.version.outputs.version }}"
         changelog=$(git log --oneline --pretty=format:"* %s (%h)" | head -n 20)
@@ -91,3 +78,4 @@ jobs:
     - name: Clean up old binaries
       run: |
         rm release/nerdfonts-installer
+
