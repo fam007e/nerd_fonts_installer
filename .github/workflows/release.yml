@@ -3,80 +3,117 @@ name: Release Binary
 on:
   push:
     branches:
-      - main # For CI builds on main branch
+      - main
   pull_request:
     branches:
-      - main # For PRs targeting main
+      - main
   release:
-    types: [published, edited, released] # For actual GitHub Releases
-  workflow_dispatch: # For manual testing
+    types: [published, edited, released]
+  workflow_dispatch:
+    inputs:
+      release_number:
+        description: 'Release number for the day (e.g., 3 for 2025.09.16.3)'
+        required: true
+        type: string
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 0  # Fetch all history for changelog
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Set up Environment
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libcurl4-openssl-dev libjansson-dev build-essential
+      - name: Set up Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libjansson-dev build-essential
+          ls -lh
 
-    - name: Install GitHub CLI
-      run: |
-        sudo apt-get install -y gh
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get install -y gh
+          gh --version
 
-    - name: Authenticate GitHub CLI
-      run: |
-        echo "${{ secrets.MY_GITHUB_TOKEN }}" | gh auth login --with-token
+      - name: Authenticate GitHub CLI
+        run: |
+          echo "${{ secrets.MY_GITHUB_TOKEN }}" | gh auth login --with-token
+          gh auth status
 
-    - name: Determine version
-      id: version
-      run: |
-        if [[ "${{ github.event_name }}" == "release" ]]; then
-          version="${{ github.event.release.tag_name }}" # Use tag name from release event
-          # Remove leading 'v' if present
-          version="${version#v}"
-          echo "Using release tag version: ${version}"
-        else
-          # Generate an AUR-compatible version for non-release builds (e.g., CI)
-          # Format: YYYY.MM.DD.HHMM.CommitCount
-          version=$(date +'%Y.%m.%d.%H%M').$(git rev-list --count HEAD)
-          echo "Using generated CI version: ${version}"
-        fi
-        echo "version=${version}" >> $GITHUB_OUTPUT
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            version="${{ github.event.release.tag_name }}"
+            version="${version#v}"
+            echo "Using release tag version: ${version}"
+          else
+            # Use YYYY.MM.DD.N format, where N is from workflow_dispatch input or commit count
+            date_part=$(date -u +'%Y.%m.%d')
+            if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+              release_number="${{ github.event.inputs.release_number }}"
+              echo "Using release number from input: ${release_number}"
+            else
+              release_number=$(git rev-list --count HEAD)
+              echo "Using commit count as release number: ${release_number}"
+            fi
+            version="${date_part}.${release_number}"
+            echo "Using generated version: ${version}"
+          fi
+          echo "version=${version}" >> $GITHUB_OUTPUT
 
-    - name: Build binary
-      run: |
-        mkdir -p release
-        make
-        mv nerdfonts-installer release/nerdfonts-installer
-        chmod +x release/nerdfonts-installer
+      - name: Build binary
+        run: |
+          mkdir -p release
+          make
+          mv nerdfonts-installer release/nerdfonts-installer
+          chmod +x release/nerdfonts-installer
+          ls -lh release/
 
-    - name: Create source tarball
-      run: |
-        version="${{ steps.version.outputs.version }}"
-        git archive --format=tar.gz --output "release/nerdfonts-installer-${version}.tar.gz" HEAD
-        echo "Version: ${version}" > release/version.txt
+      - name: Create source tarball
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          git archive --format=tar.gz --output "release/nerdfonts-installer-${version}.tar.gz" HEAD || { echo "Failed to create tarball"; exit 1; }
+          echo "Version: ${version}" > release/version.txt
+          tar -tzf "release/nerdfonts-installer-${version}.tar.gz" | sort
+          ls -lh release/
 
-    - name: Create release
-      id: create_release
-      if: github.event_name == 'release'
-      run: |
-        version="${{ steps.version.outputs.version }}"
-        changelog=$(git log --oneline --pretty=format:"* %s (%h)" | head -n 20)
-        echo "Changelog: $changelog" > release/changelog.txt
-        gh release create "v${version}" \
-          release/nerdfonts-installer \
-          release/nerdfonts-installer-${version}.tar.gz \
-          release/changelog.txt \
-          --title "Release v${version}" \
-          --notes "$changelog"
+      - name: Generate SHA256 checksum
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          sha256sum "release/nerdfonts-installer-${version}.tar.gz" > "release/nerdfonts-installer-${version}.sha256"
+          cat "release/nerdfonts-installer-${version}.sha256"
 
-    - name: Clean up old binaries
-      run: |
-        rm release/nerdfonts-installer
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: release/
+          retention-days: 30  # Retain artifacts for 30 days for debugging
+
+      - name: Create release
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          changelog=$(git log --oneline --pretty=format:"* %s (%h)" | head -n 20)
+          echo "Changelog: $changelog" > release/changelog.txt
+          gh release create "v${version}" \
+            release/nerdfonts-installer \
+            release/nerdfonts-installer-${version}.tar.gz \
+            release/nerdfonts-installer-${version}.sha256 \
+            release/changelog.txt \
+            --title "Release v${version}" \
+            --notes "$changelog" \
+            --target "${{ github.sha }}"
+          ls -lh release/
+
+      - name: Clean up old binaries
+        if: github.event_name != 'release' && github.event_name != 'workflow_dispatch'
+        run: |
+          rm -f release/nerdfonts-installer
+          ls -lh release/
