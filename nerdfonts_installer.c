@@ -282,12 +282,12 @@ int download_file(const char* url, const char* output_path) {
     }
 
     curl_easy_setopt(curl_handle, CURLOPT_URL, url);
-    curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, NULL); // Use default write function
+    curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, NULL);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, fp);
-    curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L); // Follow redirects
+    curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
-    curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 60L); // 60 seconds timeout
-    curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 15L); // 15 seconds connect timeout
+    curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 60L);
+    curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 15L);
 
     res = curl_easy_perform(curl_handle);
 
@@ -391,13 +391,13 @@ int main() {
         printf("\033[0;34mDownloading and installing %s\033[0m\n", font_name);
 
         char download_url[1024];
-        char zip_path[1024]; // Increased size
+        char zip_path[1024];
         snprintf(download_url, sizeof(download_url), "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/%s.zip", font_name);
         snprintf(zip_path, sizeof(zip_path), "%s/%s.zip", tmp_dir, font_name);
 
-        // Check if font exists before downloading (simplified: just try to download)
+        // Check if font exists before downloading
         if (download_file(download_url, zip_path) == 0) {
-            char unzip_command[2048]; // Increased size
+            char unzip_command[2048];
             snprintf(unzip_command, sizeof(unzip_command), "unzip -o %s -d %s", zip_path, fonts_dir);
             if (execute_command(unzip_command) == 0) {
                 printf("\033[0;32m%s installed successfully\033[0m\n", font_name);
