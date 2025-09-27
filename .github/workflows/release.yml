@@ -119,13 +119,14 @@ jobs:
           cd "nerd_fonts_installer-${version}"
 
           # Build using Makefile (like PKGBUILD would do)
-          make clean || true  # Clean any existing build
+          make clean || true
           make
 
-          # Verify binary was created
-          if [[ -f "nerdfonts-installer" ]]; then
+          # Verify binary was created and is executable
+          if [[ -f "nerdfonts-installer" && -x "nerdfonts-installer" ]]; then
             echo "✓ Binary successfully built from tarball"
-            ./nerdfonts-installer --version 2>/dev/null || echo "Binary created (version check may not be implemented)"
+            file nerdfonts-installer  # Show binary info
+            ldd nerdfonts-installer 2>/dev/null | head -3 || echo "Dependencies checked"
           else
             echo "✗ Failed to build binary from tarball"
             exit 1
