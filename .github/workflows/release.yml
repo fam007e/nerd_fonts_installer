@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       release_number:
-        description: 'Release number for the day (e.g., 3 for 2025.09.16.3)'
+        description: "Release number for the day (e.g., 3 for 2025.09.16.3)"
         required: true
         type: string
 
@@ -75,26 +75,130 @@ jobs:
           chmod +x release/nerdfonts-installer
           ls -lh release/
 
-      - name: Create source tarball
+      - name: Create source tarball with proper structure
         run: |
           version="${{ steps.version.outputs.version }}"
-          git archive --format=tar.gz --output "release/nerdfonts-installer-${version}.tar.gz" HEAD || { echo "Failed to create tarball"; exit 1; }
+          # Create tarball with proper directory structure for PKGBUILD
+          # This ensures the extracted folder will be named correctly
+          git archive --format=tar.gz --prefix="nerd_fonts_installer-${version}/" --output "release/nerdfonts-installer-${version}.tar.gz" HEAD || { echo "Failed to create tarball"; exit 1; }
           echo "Version: ${version}" > release/version.txt
+
+          # Verify tarball contents
+          echo "=== Tarball contents ==="
           tar -tzf "release/nerdfonts-installer-${version}.tar.gz" | sort
+
+          # Verify required files are present in tarball
+          echo "=== Verifying required files ==="
+          if tar -tzf "release/nerdfonts-installer-${version}.tar.gz" | grep -q "nerd_fonts_installer-${version}/nerdfonts_installer.c"; then
+            echo "✓ nerdfonts_installer.c found in tarball"
+          else
+            echo "✗ nerdfonts_installer.c NOT found in tarball"
+            exit 1
+          fi
+
+          if tar -tzf "release/nerdfonts-installer-${version}.tar.gz" | grep -q "nerd_fonts_installer-${version}/Makefile"; then
+            echo "✓ Makefile found in tarball"
+          else
+            echo "✗ Makefile NOT found in tarball"
+            exit 1
+          fi
+
           ls -lh release/
+
+      - name: Verify tarball can build (PKGBUILD simulation)
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          echo "=== Testing tarball build (simulating PKGBUILD) ==="
+
+          # Create a temporary directory to simulate PKGBUILD build
+          mkdir -p test_build
+          cd test_build
+
+          # Extract tarball (like PKGBUILD would do)
+          tar -xzf "../release/nerdfonts-installer-${version}.tar.gz"
+          cd "nerd_fonts_installer-${version}"
+
+          # Build using Makefile (like PKGBUILD would do)
+          make clean || true  # Clean any existing build
+          make
+
+          # Verify binary was created
+          if [[ -f "nerdfonts-installer" ]]; then
+            echo "✓ Binary successfully built from tarball"
+            ./nerdfonts-installer --version 2>/dev/null || echo "Binary created (version check may not be implemented)"
+          else
+            echo "✗ Failed to build binary from tarball"
+            exit 1
+          fi
+
+          cd ../..
 
       - name: Generate SHA256 checksum
         run: |
           version="${{ steps.version.outputs.version }}"
           sha256sum "release/nerdfonts-installer-${version}.tar.gz" > "release/nerdfonts-installer-${version}.sha256"
+
+          # Display checksum in PKGBUILD-ready format
+          echo "=== PKGBUILD Information ==="
+          checksum=$(cat "release/nerdfonts-installer-${version}.sha256" | cut -d' ' -f1)
+          echo "pkgver=${version}"
+          echo "sha256sums=('${checksum}')"
+          echo "source=(\"https://github.com/fam007e/nerd_fonts_installer/releases/download/v${version}/nerdfonts-installer-${version}.tar.gz\")"
+          echo "======================="
+
           cat "release/nerdfonts-installer-${version}.sha256"
+
+      - name: Generate PKGBUILD template
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          checksum=$(cat "release/nerdfonts-installer-${version}.sha256" | cut -d' ' -f1)
+
+          cat > "release/PKGBUILD.template" << 'EOF'
+          # Maintainer: fam007e <faisalmoshiur+gpg@gmail.com>
+          pkgname=nerdfonts-installer
+          pkgver=VERSION_PLACEHOLDER
+          pkgrel=1
+          pkgdesc="Interactive Nerd Fonts installer written in C"
+          arch=('x86_64' 'i686' 'aarch64' 'armv7h')
+          url="https://github.com/fam007e/nerd_fonts_installer"
+          license=('MIT')
+          depends=('curl' 'unzip' 'fontconfig')
+          makedepends=('gcc' 'make' 'libcurl-openssl' 'jansson')
+          source=("${url}/releases/download/v${pkgver}/nerdfonts-installer-${pkgver}.tar.gz")
+          sha256sums=('CHECKSUM_PLACEHOLDER')
+
+          build() {
+              cd "${srcdir}/nerd_fonts_installer-${pkgver}"
+              make
+          }
+
+          package() {
+              cd "${srcdir}/nerd_fonts_installer-${pkgver}"
+              install -Dm755 "nerdfonts-installer" "${pkgdir}/usr/bin/nerdfonts-installer"
+
+              if [[ -f "LICENSE" ]]; then
+                  install -Dm644 "LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+              fi
+
+              if [[ -f "README.md" ]]; then
+                  install -Dm644 "README.md" "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+              fi
+          }
+          EOF
+
+          # Replace placeholders with actual values
+          sed -i "s/VERSION_PLACEHOLDER/${version}/" "release/PKGBUILD.template"
+          sed -i "s/CHECKSUM_PLACEHOLDER/${checksum}/" "release/PKGBUILD.template"
+
+          echo "=== Generated PKGBUILD template ==="
+          cat "release/PKGBUILD.template"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: release-artifacts
           path: release/
-          retention-days: 30  # Retain artifacts for 30 days for debugging
+          retention-days: 30
 
       - name: Create release
         if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
@@ -102,10 +206,13 @@ jobs:
           version="${{ steps.version.outputs.version }}"
           changelog=$(git log --oneline --pretty=format:"* %s (%h)" | head -n 20)
           echo "Changelog: $changelog" > release/changelog.txt
+
+          # Create release with all assets including PKGBUILD template
           gh release create "v${version}" \
             release/nerdfonts-installer \
             release/nerdfonts-installer-${version}.tar.gz \
             release/nerdfonts-installer-${version}.sha256 \
+            release/PKGBUILD.template \
             release/changelog.txt \
             --title "Release v${version}" \
             --notes "$changelog" \
