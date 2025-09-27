@@ -163,7 +163,7 @@ jobs:
           url="https://github.com/fam007e/nerd_fonts_installer"
           license=('MIT')
           depends=('curl' 'unzip' 'fontconfig')
-          makedepends=('gcc' 'make' 'libcurl-openssl' 'jansson')
+          makedepends=('gcc' 'make' 'jansson')
           source=("${url}/releases/download/v${pkgver}/nerdfonts-installer-${pkgver}.tar.gz")
           sha256sums=('CHECKSUM_PLACEHOLDER')
 

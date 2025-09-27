@@ -23,7 +23,7 @@ detect_os_and_set_package_manager() {
                 ;;
         esac
     else
-        printf "%b\n" '\033[0;31mOS detection failed. Please install curl, tar, and fontconfig manually.\033[0m'
+        printf "%b\n" '\033[0;31mOS detection failed. Please install curl, unzip, and fontconfig manually.\033[0m'
         exit 1
     fi
 }
@@ -60,7 +60,7 @@ fetch_available_fonts() {
     fi
 
     # Parse JSON response to get font names
-    fonts=($(echo "$api_response" | awk -F'"' '/name/ {print $4}'))
+    fonts=($(echo "$api_response" | awk -F'"' '/name/ {print $4}' | sort))
 
     if [ ${#fonts[@]} -eq 0 ]; then
         printf "%b\n" '\033[0;31mNo fonts found in the API response. Please try again later.\033[0m'
@@ -70,25 +70,12 @@ fetch_available_fonts() {
     printf "%b\n" '\033[0;32mFound '"${#fonts[@]}"' available fonts\033[0m'
 }
 
-# Detect OS and set package manager, and then check and install dependencies
-detect_os_and_set_package_manager
-install_dependencies
-
-# Create directory for fonts
-mkdir -p "$HOME/.local/share/fonts"
-
-# Create tmp directory if it doesn't exist
-mkdir -p "$HOME/tmp"
-
-# Fetch available fonts from GitHub API
-fetch_available_fonts
-
-# Display menu of available fonts in multiple columns based on terminal width
+# Display menu of available fonts in multiple columns
 print_fonts_in_columns() {
-    cols=$(tput cols)
-    items_per_col=20
-    total_fonts=${#fonts[@]}
-    columns=$((total_fonts / items_per_col))
+    local cols=$(tput cols)
+    local items_per_col=20
+    local total_fonts=${#fonts[@]}
+    local columns=$((total_fonts / items_per_col))
     if ((total_fonts % items_per_col != 0)); then
         columns=$((columns + 1))
     fi
@@ -104,7 +91,27 @@ print_fonts_in_columns() {
     done
 }
 
-# Display the font list
+# Cleanup function for temporary files
+cleanup() {
+    printf "%b\n" '\033[0;33mCleaning up temporary files...\033[0m'
+    rm -rf "$HOME/tmp"/*.zip 2>/dev/null
+}
+
+# Trap interrupts to ensure cleanup
+trap cleanup SIGINT SIGTERM
+
+# Detect OS and set package manager, then install dependencies
+detect_os_and_set_package_manager
+install_dependencies
+
+# Create directories
+mkdir -p "$HOME/.local/share/fonts"
+mkdir -p "$HOME/tmp"
+
+# Fetch available fonts
+fetch_available_fonts
+
+# Display font list
 printf "%b\n" '\033[0;32mSelect fonts to install (separate with spaces, or enter "all" to install all fonts):\033[0m'
 printf "%b\n" "---------------------------------------------"
 print_fonts_in_columns
@@ -113,38 +120,56 @@ printf "%b\n" "---------------------------------------------"
 # Prompt user to select fonts and validate input
 while true; do
     printf "%b\n" '\033[0;36mEnter the numbers of the fonts to install (e.g., "1 2 3") or type "all" to install all fonts: \033[0m'
-    read -r font_selection
+    read -r font_selection < /dev/tty
 
     # Check if user selected "all"
-    if [ "$font_selection" == "all" ]; then
-        selected_fonts=("${fonts[@]}")  # Set all fonts
+    if [ "$font_selection" = "all" ]; then
+        selected_fonts=("${fonts[@]}")
         break
-    elif [ -n "$font_selection" ]; then
-        selected_fonts=()
-        for selection in $font_selection; do
-            font_index=$((selection - 1))  # Adjust for zero-based indexing
-            if ((font_index >= 0 && font_index < total_fonts)); then
-                selected_fonts+=("${fonts[font_index]}")
-            else
-                printf "%b\n" '\033[0;31mInvalid selection: '"$selection"'\033[0m'
-                continue 2
-            fi
-        done
-        break  # Exit loop if input is valid
-    else
-        printf "%b\n" '\033[0;31mPlease select at least one font.\033[0m'
+    fi
+
+    # Validate input
+    if [ -z "$font_selection" ]; then
+        printf "%b\n" '\033[0;31mError: Please select at least one font or type "all".\033[0m'
+        continue
+    fi
+
+    # Check for valid numeric input
+    valid_selection=true
+    selected_fonts=()
+    for selection in $font_selection; do
+        # Check if selection is a number
+        if ! [[ "$selection" =~ ^[0-9]+$ ]]; then
+            printf "%b\n" '\033[0;31mError: Invalid input '"$selection"'. Please enter numbers or "all".\033[0m'
+            valid_selection=false
+            break
+        fi
+
+        font_index=$((selection - 1))
+        if ((font_index >= 0 && font_index < ${#fonts[@]})); then
+            selected_fonts+=("${fonts[font_index]}")
+        else
+            printf "%b\n" '\033[0;31mError: Selection '"$selection"' is out of range.\033[0m'
+            valid_selection=false
+            break
+        fi
+    done
+
+    # Break loop if valid selection
+    if [ "$valid_selection" = true ] && [ ${#selected_fonts[@]} -gt 0 ]; then
+        break
     fi
 done
 
 # Download and install selected fonts
 for font in "${selected_fonts[@]}"; do
     printf "%b\n" '\033[0;34mDownloading and installing '"$font"'\033[0m'
-    font_name=$(printf "%b\n" "$font" | awk '{print $1}')
+    font_name=$(printf "%b" "$font" | awk '{print $1}')
 
     # Check if font exists before downloading
     if curl -s --head --fail "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$font_name.zip" >/dev/null 2>&1; then
         curl -sSLo "$HOME/tmp/$font_name.zip" "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$font_name.zip"
-        unzip -o "$HOME/tmp/$font_name.zip" -d "$HOME/.local/share/fonts"
+        unzip -o "$HOME/tmp/$font_name.zip" -d "$HOME/.local/share/fonts" >/dev/null
         rm "$HOME/tmp/$font_name.zip"
         printf "%b\n" '\033[0;32m'"$font"' installed successfully\033[0m'
     else
@@ -152,7 +177,14 @@ for font in "${selected_fonts[@]}"; do
     fi
 done
 
-# Update font cache
-printf "%b\n" '\033[0;34mUpdating font cache...\033[0m'
-fc-cache -vf
-printf "%b\n" '\033[0;32mFont installation complete!\033[0m'
+# Update font cache only if at least one font was installed
+if [ ${#selected_fonts[@]} -gt 0 ]; then
+    printf "%b\n" '\033[0;34mUpdating font cache...\033[0m'
+    fc-cache -f >/dev/null
+    printf "%b\n" '\033[0;32mFont installation complete!\033[0m'
+else
+    printf "%b\n" '\033[0;31mNo fonts were installed.\033[0m'
+fi
+
+# Clean up temporary files
+cleanup
