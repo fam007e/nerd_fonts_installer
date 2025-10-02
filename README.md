@@ -45,14 +45,14 @@ nerdfonts-installer
 
 ```bash
 # Using yay (recommended)
-yay -S nerdfonts-installer
+yay -S nerdfonts-installer-bin
 
 # Using paru
-paru -S nerdfonts-installer
+paru -S nerdfonts-installer-bin
 
 # Manual installation
-git clone https://aur.archlinux.org/nerdfonts-installer.git
-cd nerdfonts-installer
+git clone https://aur.archlinux.org/nerdfonts-installer-bin.git
+cd nerdfonts-installer-bin
 makepkg -si
 ```
 </details>
