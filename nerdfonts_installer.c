@@ -81,13 +81,13 @@ const char* detect_os_and_get_package_manager() {
 
     printf("Detected OS: %s\n", os_id);
 
-    if (strcmp(os_id, "ubuntu") == 0 || strcmp(os_id, "debian") == 0 || strcmp(os_id, "linuxmint") == 0) {
+    if (strcmp(os_id, "ubuntu") == 0 || strcmp(os_id, "debian") == 0 || strcmp(os_id, "linuxmint") == 0 || strcmp(os_id, "kali") == 0 || strcmp(os_id, "deepin") == 0 || strcmp(os_id, "devuan") == 0 || strcmp(os_id, "mx") == 0 || strcmp(os_id, "pop") == 0) {
         return "sudo apt-get update && sudo apt-get install -y";
     } else if (strcmp(os_id, "fedora") == 0) {
         return "sudo dnf install -y";
     } else if (strcmp(os_id, "centos") == 0 || strcmp(os_id, "rhel") == 0) {
         return "sudo yum install -y";
-    } else if (strcmp(os_id, "arch") == 0 || strcmp(os_id, "manjaro") == 0 || strcmp(os_id, "endeavouros") == 0) {
+    } else if (strcmp(os_id, "arch") == 0 || strcmp(os_id, "manjaro") == 0 || strcmp(os_id, "endeavouros") == 0 || strcmp(os_id, "cachyos") == 0 || strcmp(os_id, "garuda") == 0 || strcmp(os_id, "artix") == 0 || strcmp(os_id, "arco") == 0 || strcmp(os_id, "steamos") == 0 || strcmp(os_id, "blackarch") == 0) {
         return "sudo pacman -Syu --noconfirm";
     } else {
         printf(COLOR_RED "Unsupported OS: %s\n" COLOR_RESET, os_id);
