@@ -1,14 +1,6 @@
 name: Release Binary
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-  release:
-    types: [published, edited, released]
   workflow_dispatch:
     inputs:
       release_number:
@@ -48,23 +40,12 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            version="${{ github.event.release.tag_name }}"
-            version="${version#v}"
-            echo "Using release tag version: ${version}"
-          else
-            # Use YYYY.MM.DD.N format, where N is from workflow_dispatch input or commit count
-            date_part=$(date -u +'%Y.%m.%d')
-            if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-              release_number="${{ github.event.inputs.release_number }}"
-              echo "Using release number from input: ${release_number}"
-            else
-              release_number=$(git rev-list --count HEAD)
-              echo "Using commit count as release number: ${release_number}"
-            fi
-            version="${date_part}.${release_number}"
-            echo "Using generated version: ${version}"
-          fi
+          # Use YYYY.MM.DD.N format, where N is from workflow_dispatch input
+          date_part=$(date -u +'%Y.%m.%d')
+          release_number="${{ github.event.inputs.release_number }}"
+          echo "Using release number from input: ${release_number}"
+          version="${date_part}.${release_number}"
+          echo "Using generated version: ${version}"
           echo "version=${version}" >> $GITHUB_OUTPUT
 
       - name: Build binary
@@ -202,7 +183,6 @@ jobs:
           retention-days: 30
 
       - name: Create release
-        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         run: |
           version="${{ steps.version.outputs.version }}"
           changelog=$(git log --oneline --pretty=format:"* %s (%h)" | head -n 20)
