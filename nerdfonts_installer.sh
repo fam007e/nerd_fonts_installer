@@ -1,5 +1,7 @@
 #!/bin/bash -e
 
+PAGER="${PAGER:-less -R -X -F}"
+
 # Function to detect the OS and set the package manager
 detect_os_and_set_package_manager() {
     if [ -f /etc/os-release ]; then
@@ -72,19 +74,28 @@ fetch_available_fonts() {
 
 # Display menu of available fonts in multiple columns
 print_fonts_in_columns() {
-    local cols=$(tput cols)
-    local items_per_col=20
-    local total_fonts=${#fonts[@]}
-    local columns=$((total_fonts / items_per_col))
-    if ((total_fonts % items_per_col != 0)); then
-        columns=$((columns + 1))
+    local term_width=$(tput cols)
+    local max_len=0
+    for font in "${fonts[@]}"; do
+        if (( ${#font} > max_len )); then
+            max_len=${#font}
+        fi
+    done
+
+    local col_width=$((max_len + 6)) # "n. " + "  "
+    local columns=$((term_width / col_width))
+    if (( columns == 0 )); then
+        columns=1
     fi
 
-    for ((i=0; i<items_per_col; i++)); do
+    local total_fonts=${#fonts[@]}
+    local rows=$(( (total_fonts + columns - 1) / columns ))
+
+    for ((i=0; i<rows; i++)); do
         for ((j=0; j<columns; j++)); do
-            idx=$((i + j * items_per_col))
-            if ((idx < total_fonts)); then
-                printf "%-30s" "$((idx + 1)). ${fonts[idx]}"
+            local idx=$(( i + j * rows ))
+            if (( idx < total_fonts )); then
+                printf "%-$(echo $col_width)s" "$((idx + 1)). ${fonts[idx]}"
             fi
         done
         echo
@@ -95,6 +106,7 @@ print_fonts_in_columns() {
 cleanup() {
     printf "%b\n" '\033[0;33mCleaning up temporary files...\033[0m'
     rm -rf "$HOME/tmp"/*.zip 2>/dev/null
+    exit 0
 }
 
 # Trap interrupts to ensure cleanup
@@ -114,18 +126,24 @@ fetch_available_fonts
 # Display font list
 printf "%b\n" '\033[0;32mSelect fonts to install (separate with spaces, or enter "all" to install all fonts):\033[0m'
 printf "%b\n" "---------------------------------------------"
-print_fonts_in_columns
+print_fonts_in_columns | $PAGER
 printf "%b\n" "---------------------------------------------"
 
 # Prompt user to select fonts and validate input
 while true; do
-    printf "%b\n" '\033[0;36mEnter the numbers of the fonts to install (e.g., "1 2 3") or type "all" to install all fonts: \033[0m'
+    printf "%b\n" '\033[0;36mEnter the numbers of the fonts to install (e.g., "1 2 3"), type "all" to install all fonts, or "list" to see the list again: \033[0m'
     read -r font_selection < /dev/tty
 
     # Check if user selected "all"
     if [ "$font_selection" = "all" ]; then
         selected_fonts=("${fonts[@]}")
         break
+    fi
+
+    # Check if user wants to see the list again
+    if [ "$font_selection" = "list" ]; then
+        print_fonts_in_columns | $PAGER
+        continue
     fi
 
     # Validate input
