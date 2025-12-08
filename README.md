@@ -302,7 +302,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 ## 📞 Support & Links
 
 - 🐛 **Issues**: [GitHub Issues](https://github.com/fam007e/nerd_fonts_installer/issues)
-- 📦 **AUR Package**: [nerdfonts-installer](https://aur.archlinux.org/packages/nerdfonts-installer)
+- 📦 **AUR Package**: [nerdfonts-installer](https://aur.archlinux.org/packages/nerdfonts-installer-bin)
 - 📋 **Releases**: [Latest Release](https://github.com/fam007e/nerd_fonts_installer/releases/latest)
 - 📖 **Documentation**: [Wiki](https://github.com/fam007e/nerd_fonts_installer/wiki)
 
