@@ -295,6 +295,11 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - **🔌 GitHub API**: For providing reliable font metadata
 - **🐧 Linux Community**: For inspiration and feedback
 
+Thank you to everyone who has contributed to the development of `nerd_fonts_installer`. Your efforts are greatly appreciated, and you're helping make this tool better for everyone!
+
+[![Contributors](https://contrib.rocks/image?repo=fam007e/nerd_fonts_installer)](https://github.com/fam007e/nerd_fonts_installer/graphs/contributors)
+
+
 ---
 
 ## 📞 Support & Links
