@@ -66,6 +66,10 @@ Unsure where to begin contributing? You can start by looking through these `good
 ### C Code
 
 - **Standard**: Follow the C11 standard.
+- **Security**:
+  - Avoid `system()` calls; use `fork`/`exec` family functions for subprocesses.
+  - Validate all external inputs (filenames, user selection, API responses).
+  - Use safe string functions (e.g., `snprintf` instead of `sprintf`).
 - **Error Handling**: Implement comprehensive error checking for all system calls and library functions.
 - **Memory Management**: Ensure all allocated memory is properly freed. Use tools like Valgrind to check for leaks.
 - **Formatting**: Consistent indentation (recommend 4 spaces) and bracketing style.
@@ -94,11 +98,17 @@ To set up your local development environment:
     cd nerd_fonts_installer
     ```
 
-2.  **Install dependencies** (see `README.md` for distribution-specific commands).
+2.  **Check and install dependencies:**
+    ```bash
+    make check-deps
+    # See README.md for distribution-specific installation commands if deps are missing
+    ```
 
 3.  **Build the project:**
     ```bash
     make
+    # Optional: Verify security features
+    make verify-security
     ```
 
 4.  **Run the installer:**

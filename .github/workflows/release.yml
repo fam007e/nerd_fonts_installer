@@ -1,12 +1,9 @@
 name: Release Binary
 
 on:
-  workflow_dispatch:
-    inputs:
-      release_number:
-        description: "Release number for the day (e.g., 3 for 2025.09.16.3)"
-        required: true
-        type: string
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   release:
@@ -40,12 +37,10 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          # Use YYYY.MM.DD.N format, where N is from workflow_dispatch input
-          date_part=$(date -u +'%Y.%m.%d')
-          release_number="${{ github.event.inputs.release_number }}"
-          echo "Using release number from input: ${release_number}"
-          version="${date_part}.${release_number}"
-          echo "Using generated version: ${version}"
+          # Extract version from tag (e.g., refs/tags/v1.2.3 -> 1.2.3)
+          tag_name="${GITHUB_REF#refs/tags/}"
+          version="${tag_name#v}"
+          echo "Using version: ${version}"
           echo "version=${version}" >> $GITHUB_OUTPUT
 
       - name: Build binary
@@ -144,18 +139,18 @@ jobs:
           arch=('x86_64' 'i686' 'aarch64' 'armv7h')
           url="https://github.com/fam007e/nerd_fonts_installer"
           license=('MIT')
-          depends=('curl' 'unzip' 'fontconfig')
-          makedepends=('gcc' 'make' 'jansson')
-          source=("${url}/releases/download/v${pkgver}/nerdfonts-installer-${pkgver}.tar.gz")
+          depends=('curl' 'unzip' 'fontconfig' 'jansson')
+          makedepends=('gcc' 'make')
+          source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
           sha256sums=('CHECKSUM_PLACEHOLDER')
 
           build() {
-              cd "${srcdir}/nerd_fonts_installer-${pkgver}"
+              cd "nerd_fonts_installer-${pkgver}"
               make
           }
 
           package() {
-              cd "${srcdir}/nerd_fonts_installer-${pkgver}"
+              cd "nerd_fonts_installer-${pkgver}"
               install -Dm755 "nerdfonts-installer" "${pkgdir}/usr/bin/nerdfonts-installer"
 
               if [[ -f "LICENSE" ]]; then
