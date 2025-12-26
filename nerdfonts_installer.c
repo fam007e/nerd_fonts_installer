@@ -111,19 +111,16 @@ int secure_unlink(const char *filepath) {
     return -1;
   }
 
-  // Verify file exists and is a regular file before deletion
-  struct stat st;
-  if (stat(filepath, &st) != 0) {
-    // File doesn't exist, not an error
-    return 0;
-  }
-
-  if (!S_ISREG(st.st_mode)) {
-    fprintf(stderr, "Error: Not a regular file\n");
+  // Atomically attempt deletion to avoid TOCTOU race condition
+  if (unlink(filepath) != 0) {
+    if (errno == ENOENT) {
+      // File already gone, consider success
+      return 0;
+    }
     return -1;
   }
 
-  return unlink(filepath);
+  return 0;
 }
 
 // ============================================================================
