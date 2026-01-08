@@ -155,8 +155,7 @@ static int secure_unlink(const char *filepath) {
 // ============================================================================
 
 // Callback function for libcurl to write response data
-// cppcheck-suppress constParameterCallback
-static size_t write_callback(char *contents, size_t size, size_t nmemb,
+static size_t write_callback(char *contents, size_t size, size_t nmemb, // cppcheck-suppress constParameterCallback
                              void *userp) {
   struct HTTPResponse *response = (struct HTTPResponse *)userp;
   size_t realsize = size * nmemb;
@@ -634,7 +633,24 @@ static int download_and_install_font(const char *font_name) {
   }
 
   // SECURITY: Create file with restricted permissions (0600) and O_NOFOLLOW
-  // CodeQL Defense: Explicitly check for traversal again right before open
+  // CodeQL Defense: Resolve the directory path to break taint propagation from HOME
+  // We can't realpath the full zip_path because the file doesn't exist yet.
+  // Instead, we realpath the directory, check it, and then append the safe filename.
+  char resolved_dir[PATH_MAX];
+  if (realpath(tmp_path, resolved_dir) == NULL) {
+      printf("%s", COLOR_RED "Error: Could not resolve temp directory\n" COLOR_RESET);
+      return 0;
+  }
+
+  // Re-construct zip_path using the resolved (clean) directory path
+  int zip_len = snprintf(zip_path, sizeof(zip_path), "%s/%s.zip", resolved_dir, safe_name); // flawfinder: ignore
+
+  if (zip_len >= (int)sizeof(zip_path) || zip_len < 0) {
+      printf("%s", COLOR_RED "Error: Path too long\n" COLOR_RESET);
+      return 0;
+  }
+
+  // Explicit check for traversal again right before open
   if (strstr(zip_path, "..") != NULL) {
       return 0;
   }
