@@ -35,7 +35,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Install dependencies
         run: |
@@ -62,7 +62,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Install dependencies
         run: |
@@ -97,7 +97,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Install dependencies
         run: |
@@ -127,7 +127,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Install dependencies
         run: |
@@ -153,7 +153,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Install cppcheck
         run: |
@@ -174,13 +174,13 @@ jobs:
                    . 2> cppcheck_report.txt || true
 
       - name: Convert to SARIF
-        uses: Flast/cppcheck-sarif@v2
+        uses: Flast/cppcheck-sarif@6065406059d0a68d896191ced5c5897f74812836 # v2.0.2
         with:
           input: cppcheck_report.xml
           output: cppcheck_results.sarif
 
       - name: Upload SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v3 # v3.22.12
         if: always()
         with:
           sarif_file: cppcheck_results.sarif
@@ -198,7 +198,7 @@ jobs:
           fi
 
       - name: Upload cppcheck artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
         if: always()
         with:
           name: cppcheck-results
@@ -216,7 +216,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Install dependencies
         run: |
@@ -235,7 +235,7 @@ jobs:
             $(pkg-config --cflags --libs libcurl jansson)
 
       - name: Upload Clang analysis results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
         if: always()
         with:
           name: clang-analysis
