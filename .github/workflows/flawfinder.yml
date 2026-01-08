@@ -1,0 +1,114 @@
+# Flawfinder - Static C/C++ security vulnerability scanner
+# Detects potential security flaws in C/C++ source code
+
+name: Flawfinder Security Analysis
+
+on:
+  push:
+    branches: ["main", "master", "develop"]
+    paths:
+      - "**.c"
+      - "**.h"
+      - "**.cpp"
+      - "**.hpp"
+      - "**.cc"
+      - "**.cxx"
+  pull_request:
+    branches: ["main", "master", "develop"]
+    paths:
+      - "**.c"
+      - "**.h"
+      - "**.cpp"
+      - "**.hpp"
+      - "**.cc"
+      - "**.cxx"
+  schedule:
+    # Run weekly on Thursday at 15:31 UTC
+    - cron: '31 15 * * 4'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flawfinder:
+    name: Flawfinder Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Install flawfinder via pip for latest version
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Flawfinder
+        run: pip install flawfinder
+
+      # Run comprehensive flawfinder scan
+      - name: Run Flawfinder Analysis
+        run: |
+          flawfinder \
+            --sarif \
+            --minlevel=1 \
+            --columns \
+            --context \
+            --html > flawfinder_report.html || true
+
+          flawfinder \
+            --sarif \
+            --minlevel=1 \
+            ./ > flawfinder_results.sarif || true
+
+      # Generate text report for PR comments
+      - name: Generate Text Report
+        run: |
+          echo "## Flawfinder Security Analysis Report" > flawfinder_summary.md
+          echo "" >> flawfinder_summary.md
+          echo "<details><summary>Click to expand detailed findings</summary>" >> flawfinder_summary.md
+          echo "" >> flawfinder_summary.md
+          echo '```' >> flawfinder_summary.md
+          flawfinder --minlevel=1 --columns --context ./ >> flawfinder_summary.md 2>&1 || true
+          echo '```' >> flawfinder_summary.md
+          echo "" >> flawfinder_summary.md
+          echo "</details>" >> flawfinder_summary.md
+
+      # Upload SARIF to GitHub Security tab
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: flawfinder_results.sarif
+          category: flawfinder
+
+      # Upload reports as artifacts
+      - name: Upload Analysis Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: flawfinder-reports
+          path: |
+            flawfinder_results.sarif
+            flawfinder_report.html
+            flawfinder_summary.md
+          retention-days: 30
+
+      # Post summary to job
+      - name: Post Summary
+        if: always()
+        run: |
+          echo "### Flawfinder Analysis Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat flawfinder_summary.md >> $GITHUB_STEP_SUMMARY

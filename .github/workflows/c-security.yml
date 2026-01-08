@@ -1,0 +1,236 @@
+# C Security Analysis - Build verification and sanitizer checks
+# Includes compilation warnings, AddressSanitizer, and static analysis
+
+name: C Security Build
+
+on:
+  push:
+    branches: ["main", "master", "develop"]
+    paths:
+      - "**.c"
+      - "**.h"
+      - "Makefile"
+  pull_request:
+    branches: ["main", "master", "develop"]
+    paths:
+      - "**.c"
+      - "**.h"
+      - "Makefile"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # Standard build with strict warnings
+  build-and-warnings:
+    name: Build with Strict Warnings
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libcurl4-openssl-dev \
+            libjansson-dev \
+            pkg-config
+
+      - name: Build with strict warnings
+        run: make ci
+
+      - name: Verify binary
+        run: |
+          file nerdfonts_installer
+          ldd nerdfonts_installer || true
+
+  # AddressSanitizer build
+  asan-build:
+    name: AddressSanitizer (ASan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libcurl4-openssl-dev \
+            libjansson-dev \
+            pkg-config
+
+      - name: Build with AddressSanitizer
+        run: |
+          gcc -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer \
+              -Wall -Wextra -g -O1 \
+              -o nerdfonts_installer_asan nerdfonts_installer.c \
+              $(pkg-config --cflags --libs libcurl jansson)
+
+      - name: Verify ASan binary
+        run: |
+          file nerdfonts_installer_asan
+          echo "ASan build completed successfully"
+
+      # ASan test would require actual font installation which needs network
+      # For now, just verify the build succeeds
+
+  # Memory Sanitizer (for detecting uninitialized memory)
+  msan-build:
+    name: MemorySanitizer (MSan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true  # MSan can be finicky with external libs
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            libcurl4-openssl-dev \
+            libjansson-dev \
+            pkg-config
+
+      - name: Build with MemorySanitizer
+        run: |
+          # MSan requires clang and instrumented libraries
+          # This may fail with external libraries, hence continue-on-error
+          clang -fsanitize=memory -fno-omit-frame-pointer \
+                -Wall -Wextra -g -O1 \
+                -o nerdfonts_installer_msan nerdfonts_installer.c \
+                $(pkg-config --cflags --libs libcurl jansson) 2>&1 || \
+          echo "MSan build skipped (external library compatibility)"
+
+  # Thread Sanitizer
+  tsan-build:
+    name: ThreadSanitizer (TSan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libcurl4-openssl-dev \
+            libjansson-dev \
+            pkg-config
+
+      - name: Build with ThreadSanitizer
+        run: |
+          gcc -fsanitize=thread -fno-omit-frame-pointer \
+              -Wall -Wextra -g -O1 \
+              -o nerdfonts_installer_tsan nerdfonts_installer.c \
+              $(pkg-config --cflags --libs libcurl jansson)
+
+  # Static analysis with cppcheck
+  static-analysis:
+    name: Static Analysis (cppcheck)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install cppcheck and converter
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck python3-pip
+          pip3 install cppcheck-sarif
+
+      - name: Run cppcheck analysis
+        run: |
+          # Generate XML for conversion
+          cppcheck --enable=all --inconclusive --force \
+                   --suppress=missingIncludeSystem \
+                   --xml --xml-version=2 \
+                   . 2> cppcheck_results.xml || true
+
+          # Convert XML to SARIF
+          cppcheck-sarif -i cppcheck_results.xml -o cppcheck_results.sarif
+
+          # Generate text report for summary
+          cppcheck --enable=all --inconclusive --force \
+                   --suppress=missingIncludeSystem \
+                   . 2> cppcheck_report.txt || true
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: cppcheck_results.sarif
+          category: cppcheck
+
+      - name: Display cppcheck results
+        run: |
+          echo "## cppcheck Analysis Results" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat cppcheck_report.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload cppcheck artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cppcheck-results
+          path: |
+            cppcheck_results.sarif
+            cppcheck_report.txt
+          retention-days: 30
+
+  # Clang Static Analyzer
+  clang-analyzer:
+    name: Clang Static Analyzer
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            clang-tools \
+            libcurl4-openssl-dev \
+            libjansson-dev \
+            pkg-config
+
+      - name: Run Clang Static Analyzer
+        run: |
+          scan-build -o clang-analysis \
+            gcc -Wall -Wextra -o nerdfonts_installer nerdfonts_installer.c \
+            $(pkg-config --cflags --libs libcurl jansson)
+
+      - name: Upload Clang analysis results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: clang-analysis
+          path: clang-analysis/
+          retention-days: 30

@@ -17,7 +17,7 @@
 - **🏠 Smart Installation** - Installs to `~/.local/share/fonts` with automatic cache updates
 - **🎨 Beautiful Interface** - Colorful terminal output for better user experience
 - **🛡️ Robust Error Handling** - Comprehensive error checking and recovery
-- **🔒 Secure by Design** - Input validation, memory safety, and hardened binary compilation
+- **🔒 Secure by Design** - Input validation, memory safety (C version), and hardened binary compilation
 - **⚡ High Performance** - C version optimized for speed and memory efficiency
 
 ---
@@ -214,7 +214,7 @@ Fonts are installed to `~/.local/share/fonts/` following XDG specifications:
 
 | Version | Dependencies | Speed | Memory | Security | JSON Parsing | Recommended Use |
 |:--------|:-------------|:------|:-------|:---------------|:-------------|:----------------|
-| **C Binary** | libcurl, libjansson | 🔥 Fast | 💚 Low | 🛡️ Hardened (PIE, RELRO) | 🚀 Native | Production, Daily use |
+| **C Binary** | libcurl, libjansson | 🔥 Fast | 💚 Low | 🛡️ Hardened (PIE, Full RELRO, Stack Canary) | 🚀 Native | Production, Daily use |
 | **Shell Script** | bash, curl, unzip | 🐌 Slower | 🟡 Higher | ⚠️ Basic | 🔧 awk-based | Testing, Quick installs |
 
 ---

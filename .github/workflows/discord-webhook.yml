@@ -17,108 +17,157 @@ on:
   check_suite:
     types: [completed]
   deployment:
-    types: [created, completed]
+  deployment_status:
 
 jobs:
   notify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Check if Discord webhook URL is set
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          if [ -z "${{ secrets.DISCORD_WEBHOOK_URL }}" ]; then
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
             echo "Error: DISCORD_WEBHOOK_URL secret is not set"
             exit 1
           fi
 
       - name: Send notification to Discord for Push
         if: github.event_name == 'push'
+        env:
+          REPOSITORY: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          COMMIT_URL: ${{ github.event.head_commit.url }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
+          CONTENT="🚀 **Push Event** in \`$REPOSITORY\` by **$ACTOR**\n\nBranch: \`$REF_NAME\`\nCommit: [\`$SHA\`]($COMMIT_URL)"
+          PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
           curl -X POST \
                -H "Content-Type: application/json" \
-               -d "{\"content\": \"🚀 **Push Event** in \`${{ github.repository }}\` by **${{ github.actor }}**\\n\\nBranch: \`${{ github.ref_name }}\`\\nCommit: [\`${{ github.sha }}\`](${{ github.event.head_commit.url }})\"}" \
-               "${{ secrets.DISCORD_WEBHOOK_URL }}"
+               -d "$PAYLOAD" \
+               "$DISCORD_WEBHOOK_URL"
 
       - name: Send notification to Discord for Pull Request
         if: github.event_name == 'pull_request'
+        env:
+          ACTION: ${{ github.event.action }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REPOSITORY: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          ACTION="${{ github.event.action }}"
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          PR_URL="${{ github.event.pull_request.html_url }}"
-
+          CONTENT="📋 **Pull Request ${ACTION^}** in \`$REPOSITORY\` by **$ACTOR**\n\n[#$PR_NUMBER: $PR_TITLE]($PR_URL)"
+          PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
           curl -X POST \
                -H "Content-Type: application/json" \
-               -d "{\"content\": \"📋 **Pull Request ${ACTION^}** in \`${{ github.repository }}\` by **${{ github.actor }}**\\n\\n[#${PR_NUMBER}: ${PR_TITLE}](${PR_URL})\"}" \
-               "${{ secrets.DISCORD_WEBHOOK_URL }}"
+               -d "$PAYLOAD" \
+               "$DISCORD_WEBHOOK_URL"
 
       - name: Send notification to Discord for Pull Request Review
         if: github.event_name == 'pull_request_review'
+        env:
+          REVIEW_STATE: ${{ github.event.review.state }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REPOSITORY: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          REVIEW_STATE="${{ github.event.review.state }}"
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          PR_URL="${{ github.event.pull_request.html_url }}"
-
+          CONTENT="👀 **Pull Request Review ${REVIEW_STATE^}** in \`$REPOSITORY\` by **$ACTOR**\n\n[#$PR_NUMBER: $PR_TITLE]($PR_URL)"
+          PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
           curl -X POST \
                -H "Content-Type: application/json" \
-               -d "{\"content\": \"👀 **Pull Request Review ${REVIEW_STATE^}** in \`${{ github.repository }}\` by **${{ github.actor }}**\\n\\n[#${PR_NUMBER}: ${PR_TITLE}](${PR_URL})\"}" \
-               "${{ secrets.DISCORD_WEBHOOK_URL }}"
+               -d "$PAYLOAD" \
+               "$DISCORD_WEBHOOK_URL"
 
       - name: Send notification to Discord for Issues
         if: github.event_name == 'issues'
+        env:
+          ACTION: ${{ github.event.action }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          REPOSITORY: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          ACTION="${{ github.event.action }}"
-          ISSUE_NUMBER="${{ github.event.issue.number }}"
-          ISSUE_TITLE="${{ github.event.issue.title }}"
-          ISSUE_URL="${{ github.event.issue.html_url }}"
-
+          CONTENT="🐛 **Issue ${ACTION^}** in \`$REPOSITORY\` by **$ACTOR**\n\n[#$ISSUE_NUMBER: $ISSUE_TITLE]($ISSUE_URL)"
+          PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
           curl -X POST \
                -H "Content-Type: application/json" \
-               -d "{\"content\": \"🐛 **Issue ${ACTION^}** in \`${{ github.repository }}\` by **${{ github.actor }}**\\n\\n[#${ISSUE_NUMBER}: ${ISSUE_TITLE}](${ISSUE_URL})\"}" \
-               "${{ secrets.DISCORD_WEBHOOK_URL }}"
+               -d "$PAYLOAD" \
+               "$DISCORD_WEBHOOK_URL"
 
       - name: Send notification to Discord for Release
         if: github.event_name == 'release'
+        env:
+          ACTION: ${{ github.event.action }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          REPOSITORY: ${{ github.repository }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          ACTION="${{ github.event.action }}"
-          RELEASE_NAME="${{ github.event.release.name }}"
-          RELEASE_TAG="${{ github.event.release.tag_name }}"
-          RELEASE_URL="${{ github.event.release.html_url }}"
-
+          CONTENT="🎉 **Release ${ACTION^}** in \`$REPOSITORY\`\n\n[$RELEASE_NAME ($RELEASE_TAG)]($RELEASE_URL)"
+          PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
           curl -X POST \
                -H "Content-Type: application/json" \
-               -d "{\"content\": \"🎉 **Release ${ACTION^}** in \`${{ github.repository }}\`\\n\\n[${RELEASE_NAME} (${RELEASE_TAG})](${RELEASE_URL})\"}" \
-               "${{ secrets.DISCORD_WEBHOOK_URL }}"
+               -d "$PAYLOAD" \
+               "$DISCORD_WEBHOOK_URL"
 
       - name: Send notification to Discord for Check Run
         if: github.event_name == 'check_run'
+        env:
+          CHECK_NAME: ${{ github.event.check_run.name }}
+          CHECK_STATUS: ${{ github.event.check_run.status }}
+          CHECK_CONCLUSION: ${{ github.event.check_run.conclusion }}
+          REPOSITORY: ${{ github.repository }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          CHECK_NAME="${{ github.event.check_run.name }}"
-          CHECK_STATUS="${{ github.event.check_run.status }}"
-          CHECK_CONCLUSION="${{ github.event.check_run.conclusion }}"
-
+          CONTENT="✅ **Check Run Completed** in \`$REPOSITORY\`\n\nCheck: \`$CHECK_NAME\`\nStatus: $CHECK_STATUS\nResult: $CHECK_CONCLUSION"
+          PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
           curl -X POST \
                -H "Content-Type: application/json" \
-               -d "{\"content\": \"✅ **Check Run Completed** in \`${{ github.repository }}\`\\n\\nCheck: \`${CHECK_NAME}\`\\nStatus: ${CHECK_STATUS}\\nResult: ${CHECK_CONCLUSION}\"}" \
-               "${{ secrets.DISCORD_WEBHOOK_URL }}"
+               -d "$PAYLOAD" \
+               "$DISCORD_WEBHOOK_URL"
 
       - name: Send notification to Discord for Check Suite
         if: github.event_name == 'check_suite'
+        env:
+          CHECK_STATUS: ${{ github.event.check_suite.status }}
+          CHECK_CONCLUSION: ${{ github.event.check_suite.conclusion }}
+          REPOSITORY: ${{ github.repository }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          CHECK_STATUS="${{ github.event.check_suite.status }}"
-          CHECK_CONCLUSION="${{ github.event.check_suite.conclusion }}"
-
+          CONTENT="📊 **Check Suite Completed** in \`$REPOSITORY\`\n\nStatus: $CHECK_STATUS\nResult: $CHECK_CONCLUSION"
+          PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
           curl -X POST \
                -H "Content-Type: application/json" \
-               -d "{\"content\": \"📊 **Check Suite Completed** in \`${{ github.repository }}\`\\n\\nStatus: ${CHECK_STATUS}\\nResult: ${CHECK_CONCLUSION}\"}" \
-               "${{ secrets.DISCORD_WEBHOOK_URL }}"
+               -d "$PAYLOAD" \
+               "$DISCORD_WEBHOOK_URL"
 
       - name: Send notification to Discord for Deployment
-        if: github.event_name == 'deployment'
+        if: github.event_name == 'deployment' || github.event_name == 'deployment_status'
+        env:
+          DEPLOY_ENV: ${{ github.event.deployment.environment }}
+          DEPLOY_STATUS: ${{ github.event.deployment_status.state }}
+          REPOSITORY: ${{ github.repository }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          DEPLOY_ENV="${{ github.event.deployment.environment }}"
-
+          if [ "${{ github.event_name }}" == "deployment_status" ]; then
+            CONTENT="🚀 **Deployment Status: ${DEPLOY_STATUS^^}** in \`$REPOSITORY\`\n\nEnvironment: \`$DEPLOY_ENV\`"
+          else
+            CONTENT="🚀 **Deployment Created** in \`$REPOSITORY\`\n\nEnvironment: \`$DEPLOY_ENV\`"
+          fi
+          PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
           curl -X POST \
                -H "Content-Type: application/json" \
-               -d "{\"content\": \"🚀 **Deployment Event** in \`${{ github.repository }}\`\\n\\nEnvironment: \`${DEPLOY_ENV}\`\"}" \
-               "${{ secrets.DISCORD_WEBHOOK_URL }}"
+               -d "$PAYLOAD" \
+               "$DISCORD_WEBHOOK_URL"

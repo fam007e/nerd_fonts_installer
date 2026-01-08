@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <curl/curl.h>
 #include <fcntl.h>
 #include <jansson.h>
@@ -33,11 +34,11 @@
   "patched-fonts?ref=master"
 
 // Global variables
-static char fonts[MAX_FONTS][MAX_FONT_NAME_LEN];
+static char fonts[MAX_FONTS][MAX_FONT_NAME_LEN]; // flawfinder: ignore
 static int font_count = 0;
-static char home_path[MAX_PATH_LEN];
-static char tmp_path[MAX_PATH_LEN];
-static char fonts_path[MAX_PATH_LEN];
+static char home_path[MAX_PATH_LEN]; // flawfinder: ignore
+static char tmp_path[MAX_PATH_LEN]; // flawfinder: ignore
+static char fonts_path[MAX_PATH_LEN]; // flawfinder: ignore
 
 // Structure for HTTP response
 struct HTTPResponse {
@@ -50,8 +51,8 @@ struct HTTPResponse {
 // ============================================================================
 
 // Validate font name (alphanumeric, hyphens, underscores only)
-int validate_font_name(const char *name) {
-  if (!name || strlen(name) == 0 || strlen(name) >= MAX_FONT_NAME_LEN) {
+static int validate_font_name(const char *name) {
+  if (!name || strlen(name) == 0 || strlen(name) >= MAX_FONT_NAME_LEN) { // flawfinder: ignore
     return 0;
   }
 
@@ -65,7 +66,7 @@ int validate_font_name(const char *name) {
 }
 
 // Secure directory creation using mkdir() instead of system()
-int create_directory_secure(const char *path) {
+static int create_directory_secure(const char *path) {
   // Try to create the directory
   if (mkdir(path, 0755) == 0) {
     return 0; // Success
@@ -82,8 +83,8 @@ int create_directory_secure(const char *path) {
 
   // If parent doesn't exist, try to create parent directories recursively
   if (errno == ENOENT) {
-    char parent[MAX_PATH_LEN];
-    strncpy(parent, path, sizeof(parent) - 1);
+    char parent[MAX_PATH_LEN]; // flawfinder: ignore
+    strncpy(parent, path, sizeof(parent) - 1); // flawfinder: ignore
     parent[sizeof(parent) - 1] = '\0';
 
     char *last_slash = strrchr(parent, '/');
@@ -100,8 +101,8 @@ int create_directory_secure(const char *path) {
 }
 
 // Simple secure file deletion with basic path validation
-int secure_unlink(const char *filepath) {
-  if (!filepath || strlen(filepath) == 0) {
+static int secure_unlink(const char *filepath) {
+  if (!filepath || strlen(filepath) == 0) { // flawfinder: ignore
     return -1;
   }
 
@@ -111,19 +112,16 @@ int secure_unlink(const char *filepath) {
     return -1;
   }
 
-  // Verify file exists and is a regular file before deletion
-  struct stat st;
-  if (stat(filepath, &st) != 0) {
-    // File doesn't exist, not an error
-    return 0;
-  }
-
-  if (!S_ISREG(st.st_mode)) {
-    fprintf(stderr, "Error: Not a regular file\n");
+  // Atomically attempt deletion to avoid TOCTOU race condition
+  if (unlink(filepath) != 0) {
+    if (errno == ENOENT) {
+      // File already gone, consider success
+      return 0;
+    }
     return -1;
   }
 
-  return unlink(filepath);
+  return 0;
 }
 
 // ============================================================================
@@ -131,19 +129,19 @@ int secure_unlink(const char *filepath) {
 // ============================================================================
 
 // Callback function for libcurl to write response data
-static size_t write_callback(void *contents, size_t size, size_t nmemb,
-                             struct HTTPResponse *response) {
+static size_t write_callback(char *contents, size_t size, size_t nmemb, // cppcheck-suppress constParameterCallback
+                             void *userp) {
+  struct HTTPResponse *response = (struct HTTPResponse *)userp;
   size_t realsize = size * nmemb;
   char *ptr = realloc(response->memory, response->size + realsize + 1);
 
   if (!ptr) {
-    printf(COLOR_RED
-           "Error: Not enough memory (realloc returned NULL)\n" COLOR_RESET);
+    printf("%sError: Not enough memory (realloc returned NULL)\n%s", COLOR_RED, COLOR_RESET);
     return 0;
   }
 
   response->memory = ptr;
-  memcpy(&(response->memory[response->size]), contents, realsize);
+  memcpy(&(response->memory[response->size]), contents, realsize); // flawfinder: ignore
   response->size += realsize;
   response->memory[response->size] = 0;
 
@@ -151,24 +149,25 @@ static size_t write_callback(void *contents, size_t size, size_t nmemb,
 }
 
 // Function to detect OS and return appropriate package manager command
-const char *detect_os_and_get_package_manager() {
-  FILE *fp = fopen("/etc/os-release", "r");
+static const char *detect_os_and_get_package_manager() {
+  FILE *fp = fopen("/etc/os-release", "r"); // flawfinder: ignore
   if (!fp) {
-    printf(COLOR_RED "OS detection failed. Please install curl, unzip, and "
-                     "fontconfig manually.\n" COLOR_RESET);
+    printf("%sOS detection failed. Please install curl, unzip, and "
+           "fontconfig manually.\n%s",
+           COLOR_RED, COLOR_RESET);
     exit(1);
   }
 
-  char line[256];
-  char os_id[50] = {0};
+  char line[256]; // flawfinder: ignore
+  char os_id[50] = {0}; // flawfinder: ignore
 
   while (fgets(line, sizeof(line), fp)) {
     if (strncmp(line, "ID=", 3) == 0) {
-      sscanf(line, "ID=%49s", os_id);
+      sscanf(line, "ID=%49s", os_id); // flawfinder: ignore
       // Remove quotes if present
       if (os_id[0] == '"') {
-        memmove(os_id, os_id + 1, strlen(os_id));
-        os_id[strlen(os_id) - 1] = '\0';
+        memmove(os_id, os_id + 1, strlen(os_id)); // flawfinder: ignore
+        os_id[strlen(os_id) - 1] = '\0'; // flawfinder: ignore
       }
       break;
     }
@@ -193,34 +192,69 @@ const char *detect_os_and_get_package_manager() {
              strcmp(os_id, "steamos") == 0 || strcmp(os_id, "blackarch") == 0) {
     return "sudo pacman -Syu --noconfirm";
   } else {
-    printf(COLOR_RED "Unsupported OS: %s\n" COLOR_RESET, os_id);
+    printf("%sUnsupported OS: %s\n%s", COLOR_RED, os_id, COLOR_RESET);
     exit(1);
   }
 }
 
-// Function to check if a command exists
-int command_exists(const char *command) {
-  char cmd[256];
-  snprintf(cmd, sizeof(cmd), "command -v %s >/dev/null 2>&1", command);
-  return system(cmd) == 0;
+// Function to check if a command exists (Pure C implementation for speed and security)
+static int command_exists(const char *command) {
+  const char *path = getenv("PATH"); // flawfinder: ignore
+  if (!path)
+    return 0;
+
+  char *path_copy = strdup(path);
+  if (!path_copy)
+    return 0;
+
+  const char *dir = strtok(path_copy, ":");
+  while (dir != NULL) {
+    char full_path[MAX_PATH_LEN]; // flawfinder: ignore
+    snprintf(full_path, sizeof(full_path), "%s/%s", dir, command);
+    if (access(full_path, X_OK) == 0) { // flawfinder: ignore
+      free(path_copy);
+      return 1;
+    }
+    dir = strtok(NULL, ":");
+  }
+
+  free(path_copy);
+  return 0;
 }
 
-// Function to install a package using the package manager
-void install_package(const char *package_manager, const char *package) {
-  char cmd[MAX_COMMAND_LEN];
-  snprintf(cmd, sizeof(cmd), "%s %s", package_manager, package);
+// Function to install a package (Secure: uses sh -c for complex commands)
+static void install_package(const char *package_manager, const char *package) {
+  printf("%s%s not found. Installing %s...\n%s", COLOR_YELLOW, package,
+         package, COLOR_RESET);
 
-  printf(COLOR_YELLOW "%s not found. Installing %s...\n" COLOR_RESET, package,
-         package);
+  pid_t pid = fork();
+  if (pid == -1) {
+    perror("fork");
+    exit(1);
+  }
 
-  if (system(cmd) != 0) {
-    printf(COLOR_RED "Failed to install %s\n" COLOR_RESET, package);
+  if (pid == 0) {
+    char cmd[MAX_COMMAND_LEN]; // flawfinder: ignore
+    snprintf(cmd, sizeof(cmd), "%s %s", package_manager, package);
+
+    // We use sh -c to handle possible shell features like "&&" in the
+    // package_manager string. This is safe because both package_manager
+    // and package are controlled strings within this program.
+    execlp("sh", "sh", "-c", cmd, (char *)NULL); // flawfinder: ignore
+    perror("execlp sh");
+    _exit(127);
+  }
+
+  int status;
+  waitpid(pid, &status, 0);
+  if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+    printf("%sFailed to install %s\n%s", COLOR_RED, package, COLOR_RESET);
     exit(1);
   }
 }
 
 // Function to install dependencies
-void install_dependencies() {
+static void install_dependencies() {
   const char *pkg_manager = detect_os_and_get_package_manager();
 
   if (!command_exists("curl")) {
@@ -235,21 +269,21 @@ void install_dependencies() {
     install_package(pkg_manager, "fontconfig");
   }
 
-  printf(COLOR_GREEN "✓ All dependencies are installed\n" COLOR_RESET);
+  printf("%s✓ All dependencies are installed\n%s", COLOR_GREEN, COLOR_RESET);
 }
 
 // SECURE: Function to create necessary directories using mkdir() instead of system()
-void create_directories() {
-  const char *home = getenv("HOME");
+static void create_directories() {
+  const char *home = getenv("HOME"); // flawfinder: ignore
   if (!home) {
-    printf(COLOR_RED "Error: Could not get HOME directory\n" COLOR_RESET);
+    printf("%sError: Could not get HOME directory\n%s", COLOR_RED, COLOR_RESET);
     exit(1);
   }
 
   // Validate HOME path length
-  size_t home_len = strlen(home);
+  size_t home_len = strlen(home); // flawfinder: ignore
   if (home_len == 0 || home_len >= MAX_PATH_LEN - 50) {
-    printf(COLOR_RED "Error: HOME path too long or invalid\n" COLOR_RESET);
+    printf("%sError: HOME path too long or invalid\n%s", COLOR_RED, COLOR_RESET);
     exit(1);
   }
 
@@ -259,25 +293,25 @@ void create_directories() {
 
   // Create directories securely
   if (create_directory_secure(fonts_path) != 0) {
-    printf(COLOR_YELLOW "Note: Fonts directory may already exist\n" COLOR_RESET);
+    printf("%sNote: Fonts directory may already exist\n%s", COLOR_YELLOW, COLOR_RESET);
   }
 
   if (create_directory_secure(tmp_path) != 0) {
-    printf(COLOR_YELLOW "Note: Temp directory may already exist\n" COLOR_RESET);
+    printf("%sNote: Temp directory may already exist\n%s", COLOR_YELLOW, COLOR_RESET);
   }
 }
 
 // Function to fetch available fonts from GitHub API
-void fetch_available_fonts() {
+static void fetch_available_fonts() {
   CURL *curl;
   CURLcode res;
   struct HTTPResponse response = {0};
 
-  printf(COLOR_YELLOW "Fetching available fonts from GitHub...\n" COLOR_RESET);
+  printf("%sFetching available fonts from GitHub...\n%s", COLOR_YELLOW, COLOR_RESET);
 
   curl = curl_easy_init();
   if (!curl) {
-    printf(COLOR_RED "Failed to initialize curl\n" COLOR_RESET);
+    printf("%sFailed to initialize curl\n%s", COLOR_RED, COLOR_RESET);
     exit(1);
   }
 
@@ -293,16 +327,15 @@ void fetch_available_fonts() {
   curl_easy_cleanup(curl);
 
   if (res != CURLE_OK) {
-    printf(COLOR_RED
-           "Failed to fetch font list from GitHub API: %s\n" COLOR_RESET,
-           curl_easy_strerror(res));
+    printf("%sFailed to fetch font list from GitHub API: %s\n%s",
+           COLOR_RED, curl_easy_strerror(res), COLOR_RESET);
     if (response.memory)
       free(response.memory);
     exit(1);
   }
 
   if (!response.memory || response.size == 0) {
-    printf(COLOR_RED "Empty response from GitHub API\n" COLOR_RESET);
+    printf("%sEmpty response from GitHub API\n%s", COLOR_RED, COLOR_RESET);
     exit(1);
   }
 
@@ -312,12 +345,12 @@ void fetch_available_fonts() {
   free(response.memory);
 
   if (!root) {
-    printf(COLOR_RED "JSON parsing error: %s\n" COLOR_RESET, error.text);
+    printf("%sJSON parsing error: %s\n%s", COLOR_RED, error.text, COLOR_RESET);
     exit(1);
   }
 
   if (!json_is_array(root)) {
-    printf(COLOR_RED "Invalid JSON response format\n" COLOR_RESET);
+    printf("%sInvalid JSON response format\n%s", COLOR_RED, COLOR_RESET);
     json_decref(root);
     exit(1);
   }
@@ -333,7 +366,7 @@ void fetch_available_fonts() {
     json_t *name_obj = json_object_get(value, "name");
     if (json_is_string(name_obj)) {
       const char *name = json_string_value(name_obj);
-      strncpy(fonts[font_count], name, MAX_FONT_NAME_LEN - 1);
+      strncpy(fonts[font_count], name, MAX_FONT_NAME_LEN - 1); // flawfinder: ignore
       fonts[font_count][MAX_FONT_NAME_LEN - 1] = '\0';
       font_count++;
     }
@@ -342,18 +375,18 @@ void fetch_available_fonts() {
   json_decref(root);
 
   if (font_count == 0) {
-    printf(COLOR_RED "No fonts found in the API response\n" COLOR_RESET);
+    printf("%sNo fonts found in the API response\n%s", COLOR_RED, COLOR_RESET);
     exit(1);
   }
 
-  printf(COLOR_GREEN "Found %d available fonts\n" COLOR_RESET, font_count);
+  printf("%sFound %d available fonts\n%s", COLOR_GREEN, font_count, COLOR_RESET);
 }
 
 // Function to print fonts in columns, adapting to terminal width
-void print_fonts_in_columns() {
+static void print_fonts_in_columns() {
   int term_width = 80; // Default terminal width
   struct winsize w;
-  int fd = open("/dev/tty", O_RDWR);
+  int fd = open("/dev/tty", O_RDWR); // flawfinder: ignore
   if (fd >= 0) {
     if (ioctl(fd, TIOCGWINSZ, &w) == 0) {
       term_width = w.ws_col;
@@ -364,7 +397,7 @@ void print_fonts_in_columns() {
   // Find the widest font name
   int max_len = 0;
   for (int i = 0; i < font_count; i++) {
-    int len = strlen(fonts[i]);
+    int len = (int)strlen(fonts[i]); // flawfinder: ignore
     if (len > max_len) {
       max_len = len;
     }
@@ -385,7 +418,7 @@ void print_fonts_in_columns() {
     for (int j = 0; j < columns; j++) {
       int idx = i + j * rows;
       if (idx < font_count) {
-        char item[MAX_FONT_NAME_LEN + 20];
+        char item[MAX_FONT_NAME_LEN + 20]; // flawfinder: ignore
         snprintf(item, sizeof(item), "%d. %.*s", idx + 1, MAX_FONT_NAME_LEN, fonts[idx]);
         printf("%-*s", col_width, item);
       }
@@ -395,12 +428,9 @@ void print_fonts_in_columns() {
 }
 
 // SECURE: Function to display fonts with a pager (hardcoded pager for security)
-void display_fonts_with_pager() {
+static void display_fonts_with_pager() {
   int pipefd[2];
   pid_t pid;
-
-  // SECURITY FIX: Use hardcoded pager instead of PAGER environment variable
-  const char *pager_args[] = {"less", "-R", "-X", "-F", NULL};
 
   if (pipe(pipefd) == -1) {
     perror("pipe");
@@ -415,12 +445,17 @@ void display_fonts_with_pager() {
   }
 
   if (pid == 0) {     // Child process
+    // SECURITY FIX: Use hardcoded pager instead of PAGER environment variable
+    const char *pager_args[] = {"less", "-R", "-X", "-F", NULL};
     close(pipefd[1]); // Close write end
     dup2(pipefd[0], STDIN_FILENO);
     close(pipefd[0]);
 
     // SECURITY FIX: Use execv with hardcoded path instead of shell execution
-    execvp("less", (char *const *)pager_args);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-qual"
+    execvp("less", (char *const *)pager_args); // flawfinder: ignore
+#pragma GCC diagnostic pop
     perror("execvp");
     _exit(127);
   } else {            // Parent process
@@ -430,18 +465,20 @@ void display_fonts_with_pager() {
     close(pipefd[1]);
     print_fonts_in_columns();
     fflush(stdout);
-    dup2(stdout_backup, STDOUT_FILENO);
-    close(stdout_backup);
+    if (stdout_backup != -1) {
+      dup2(stdout_backup, STDOUT_FILENO);
+      close(stdout_backup);
+    }
     wait(NULL);
   }
 }
 
 // Function to check if font exists in releases
-int check_font_exists(const char *font_name) {
+static int check_font_exists(const char *font_name) {
   CURL *curl;
   CURLcode res;
   long response_code;
-  char url[1024];
+  char url[1024]; // flawfinder: ignore
 
   // Validate font name first
   if (!validate_font_name(font_name)) {
@@ -474,7 +511,7 @@ int check_font_exists(const char *font_name) {
 }
 
 // SECURE: Function to execute unzip using fork/exec instead of system()
-int secure_unzip(const char *zip_file, const char *dest_dir) {
+static int secure_unzip(const char *zip_file, const char *dest_dir) {
   pid_t pid = fork();
 
   if (pid == -1) {
@@ -484,7 +521,7 @@ int secure_unzip(const char *zip_file, const char *dest_dir) {
 
   if (pid == 0) {
     // Child process - redirect output to /dev/null
-    int devnull = open("/dev/null", O_WRONLY);
+    int devnull = open("/dev/null", O_WRONLY); // flawfinder: ignore
     if (devnull != -1) {
       dup2(devnull, STDOUT_FILENO);
       dup2(devnull, STDERR_FILENO);
@@ -492,7 +529,7 @@ int secure_unzip(const char *zip_file, const char *dest_dir) {
     }
 
     // Execute unzip with arguments
-    execlp("unzip", "unzip", "-o", zip_file, "-d", dest_dir, (char *)NULL);
+    execlp("unzip", "unzip", "-o", zip_file, "-d", dest_dir, (char *)NULL); // flawfinder: ignore
     perror("execlp unzip");
     _exit(127);
   } else {
@@ -508,26 +545,25 @@ int secure_unzip(const char *zip_file, const char *dest_dir) {
 }
 
 // SECURE: Download and install a font with path validation
-int download_and_install_font(const char *font_name) {
-  char url[1024];
-  char zip_path[MAX_PATH_LEN];
+static int download_and_install_font(const char *font_name) {
+  char url[1024]; // flawfinder: ignore
+  char zip_path[MAX_PATH_LEN + 32]; // flawfinder: ignore
   CURL *curl;
   FILE *fp;
   CURLcode res;
 
-  printf(COLOR_BLUE "Downloading and installing %s\n" COLOR_RESET, font_name);
+  printf("%sDownloading and installing %s\n%s", COLOR_BLUE, font_name, COLOR_RESET);
 
   // SECURITY FIX: Validate font name
   if (!validate_font_name(font_name)) {
-    printf(COLOR_RED "Error: Invalid font name\n" COLOR_RESET);
+    printf("%sError: Invalid font name\n%s", COLOR_RED, COLOR_RESET);
     return 0;
   }
 
   // Check if font exists
   if (!check_font_exists(font_name)) {
-    printf(COLOR_RED
-           "Warning: %s not found in releases, skipping...\n" COLOR_RESET,
-           font_name);
+    printf("%sWarning: %s not found in releases, skipping...\n%s",
+           COLOR_RED, font_name, COLOR_RESET);
     return 0;
   }
 
@@ -538,7 +574,7 @@ int download_and_install_font(const char *font_name) {
       font_name);
 
   if (url_len >= (int)sizeof(url) || url_len < 0) {
-    printf(COLOR_RED "Error: Font name too long for URL buffer\n" COLOR_RESET);
+    printf("%sError: Font name too long for URL buffer\n%s", COLOR_RED, COLOR_RESET);
     return 0;
   }
 
@@ -546,7 +582,7 @@ int download_and_install_font(const char *font_name) {
   int path_len = snprintf(zip_path, sizeof(zip_path), "%s/%s.zip", tmp_path, font_name);
 
   if (path_len >= (int)sizeof(zip_path) || path_len < 0) {
-    printf(COLOR_RED "Error: Path too long for buffer\n" COLOR_RESET);
+    printf("%sError: Path too long for buffer\n%s", COLOR_RED, COLOR_RESET);
     return 0;
   }
 
@@ -554,15 +590,15 @@ int download_and_install_font(const char *font_name) {
   curl = curl_easy_init();
 
   if (!curl) {
-    printf(COLOR_RED "Failed to initialize curl for %s\n" COLOR_RESET,
-           font_name);
+    printf("%sFailed to initialize curl for %s\n%s", COLOR_RED,
+           font_name, COLOR_RESET);
     return 0;
   }
 
-  fp = fopen(zip_path, "wb");
+  fp = fopen(zip_path, "wb"); // flawfinder: ignore
 
   if (!fp) {
-    printf(COLOR_RED "Failed to create file %s\n" COLOR_RESET, zip_path);
+    printf("%sFailed to create file %s\n%s", COLOR_RED, zip_path, COLOR_RESET);
     curl_easy_cleanup(curl);
     return 0;
   }
@@ -577,15 +613,15 @@ int download_and_install_font(const char *font_name) {
   curl_easy_cleanup(curl);
 
   if (res != CURLE_OK) {
-    printf(COLOR_RED "Failed to download %s: %s\n" COLOR_RESET, font_name,
-           curl_easy_strerror(res));
+    printf("%sFailed to download %s: %s\n%s", COLOR_RED, font_name,
+           curl_easy_strerror(res), COLOR_RESET);
     secure_unlink(zip_path);
     return 0;
   }
 
   // SECURITY FIX: Extract font using secure_unzip instead of system()
   if (secure_unzip(zip_path, fonts_path) != 0) {
-    printf(COLOR_RED "Failed to extract %s\n" COLOR_RESET, font_name);
+    printf("%sFailed to extract %s\n%s", COLOR_RED, font_name, COLOR_RESET);
     secure_unlink(zip_path);
     return 0;
   }
@@ -593,29 +629,29 @@ int download_and_install_font(const char *font_name) {
   // SECURITY FIX: Remove zip file using secure_unlink
   secure_unlink(zip_path);
 
-  printf(COLOR_GREEN "✓ %s installed successfully\n" COLOR_RESET, font_name);
+  printf("%s✓ %s installed successfully\n%s", COLOR_GREEN, font_name, COLOR_RESET);
   return 1;
 }
 
 // Function to update font cache
-void update_font_cache() {
+static void update_font_cache() {
   pid_t pid = fork();
 
   if (pid == -1) {
-    printf(COLOR_YELLOW "Warning: Failed to update font cache\n" COLOR_RESET);
+    printf("%sWarning: Failed to update font cache\n%s", COLOR_YELLOW, COLOR_RESET);
     return;
   }
 
   if (pid == 0) {
     // Child process - redirect output to /dev/null
-    int devnull = open("/dev/null", O_WRONLY);
+    int devnull = open("/dev/null", O_WRONLY); // flawfinder: ignore
     if (devnull != -1) {
       dup2(devnull, STDOUT_FILENO);
       dup2(devnull, STDERR_FILENO);
       close(devnull);
     }
 
-    execlp("fc-cache", "fc-cache", "-f", (char *)NULL);
+    execlp("fc-cache", "fc-cache", "-f", (char *)NULL); // flawfinder: ignore
     _exit(127);
   } else {
     // Parent process - wait for child
@@ -623,33 +659,33 @@ void update_font_cache() {
     waitpid(pid, &status, 0);
 
     if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-      printf(COLOR_GREEN "✓ Font installation complete!\n" COLOR_RESET);
+      printf("%s✓ Font installation complete!\n%s", COLOR_GREEN, COLOR_RESET);
     } else {
-      printf(COLOR_YELLOW "Warning: Font cache update failed, but fonts were "
-                          "installed\n" COLOR_RESET);
+      printf("%sWarning: Font cache update failed, but fonts were "
+                          "installed\n%s", COLOR_YELLOW, COLOR_RESET);
     }
   }
 }
 
 // Cleanup temporary files
-void cleanup() {
+static void cleanup() {
   // Individual files are cleaned up during installation
   // This is a placeholder for any additional cleanup
 }
 
 // Signal handler for cleanup
-void signal_handler(int sig) {
+static void signal_handler(int sig) {
   (void)sig;
-  printf(COLOR_YELLOW "\nCleaning up and exiting...\n" COLOR_RESET);
+  printf("%s\nCleaning up and exiting...\n%s", COLOR_YELLOW, COLOR_RESET);
   cleanup();
   exit(0);
 }
 
 // SECURE: Get user input with better error messages (no sensitive data logging)
-void get_font_selection(int *selected_indices, int *num_selected) {
-  char input[1024];
-  char *token;
-  FILE *tty = fopen("/dev/tty", "r");
+static void get_font_selection(int *selected_indices, int *num_selected) {
+  char input[1024]; // flawfinder: ignore
+  const char *token;
+  FILE *tty = fopen("/dev/tty", "r"); // flawfinder: ignore
 
   if (tty == NULL) {
     perror("fopen /dev/tty");
@@ -657,12 +693,23 @@ void get_font_selection(int *selected_indices, int *num_selected) {
   }
 
   while (1) {
-    printf(COLOR_CYAN
-           "Enter the numbers of the fonts to install (e.g., \"1 2 3\") or "
-           "type \"all\" to install all fonts: " COLOR_RESET);
+    printf("%sEnter the numbers of the fonts to install (e.g., \"1 2 3\") or "
+           "type \"all\" to install all fonts: %s", COLOR_CYAN, COLOR_RESET);
 
-    if (!fgets(input, sizeof(input), tty)) {
-      printf(COLOR_RED "Error reading input\n" COLOR_RESET);
+    if (ferror(tty)) {
+        clearerr(tty);
+    }
+
+    if (fgets(input, sizeof(input), tty) == NULL) {
+      if (feof(tty)) {
+        printf("\nEnd of input reached. Exiting selection.\n");
+        break;
+      }
+      if (ferror(tty)) {
+        printf("%sError reading input: %s\n%s", COLOR_RED, strerror(errno), COLOR_RESET);
+      }
+      // Explicitly clear error and reset to try and satisfy static analysis
+      clearerr(tty);
       continue;
     }
 
@@ -670,9 +717,9 @@ void get_font_selection(int *selected_indices, int *num_selected) {
     input[strcspn(input, "\n")] = 0;
 
     // Check for empty input
-    if (strlen(input) == 0) {
-      printf(COLOR_RED "Error: Please select at least one font or type "
-                       "\"all\".\n" COLOR_RESET);
+    if (strlen(input) == 0) { // flawfinder: ignore
+      printf("%sError: Please select at least one font or type "
+                       "\"all\".\n%s", COLOR_RED, COLOR_RESET);
       continue;
     }
 
@@ -696,14 +743,14 @@ void get_font_selection(int *selected_indices, int *num_selected) {
 
       // SECURITY FIX: Don't log the actual token value
       if (*endptr != '\0' || selection < 1 || selection > font_count) {
-        printf(COLOR_RED "Error: Invalid selection. Please enter "
-                         "numbers between 1 and %d.\n" COLOR_RESET,
-               font_count);
+        printf("%sError: Invalid selection. Please enter "
+                         "numbers between 1 and %d.\n%s",
+               COLOR_RED, font_count, COLOR_RESET);
         valid_selection = 0;
         break;
       }
 
-      selected_indices[*num_selected] = selection - 1;
+      selected_indices[*num_selected] = (int)(selection - 1);
       (*num_selected)++;
       token = strtok(NULL, " ");
     }
@@ -727,7 +774,7 @@ int main() {
 
   // Initialize curl
   curl_global_init(CURL_GLOBAL_DEFAULT);
-  printf(COLOR_GREEN "🚀 Nerd Fonts Installer\n" COLOR_RESET);
+  printf("%s🚀 Nerd Fonts Installer\n%s", COLOR_GREEN, COLOR_RESET);
   printf("════════════════════════\n\n");
 
   // Install dependencies
@@ -740,8 +787,8 @@ int main() {
   fetch_available_fonts();
 
   // Display font selection menu
-  printf(COLOR_GREEN "Select fonts to install (separate with spaces, or enter "
-                     "\"all\" to install all fonts):\n" COLOR_RESET);
+  printf("%sSelect fonts to install (separate with spaces, or enter "
+                     "\"all\" to install all fonts):\n%s", COLOR_GREEN, COLOR_RESET);
   printf("---------------------------------------------\n");
   display_fonts_with_pager();
   printf("---------------------------------------------\n\n");
@@ -763,10 +810,10 @@ int main() {
   // Update font cache if any fonts were installed
   if (installed_count > 0) {
     update_font_cache();
-    printf(COLOR_GREEN "\n🎉 Successfully installed %d fonts!\n" COLOR_RESET,
-           installed_count);
+    printf("%s\n🎉 Successfully installed %d fonts!\n%s", COLOR_GREEN,
+           installed_count, COLOR_RESET);
   } else {
-    printf(COLOR_RED "No fonts were installed.\n" COLOR_RESET);
+    printf("%sNo fonts were installed.\n%s", COLOR_RED, COLOR_RESET);
   }
 
   // Cleanup

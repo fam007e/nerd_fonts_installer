@@ -69,6 +69,16 @@ analyze: CFLAGS += -Wconversion -Wshadow -Wcast-align -Wunused \
 analyze: clean $(TARGET)
 	@echo "Static analysis build complete!"
 
+# CI build with maximum strictness for security scanning
+ci: CFLAGS += -Wformat=2 -Wformat-overflow=2 -Wformat-truncation=2 \
+              -Wnull-dereference -Wstack-protector -Wstrict-overflow=3 \
+              -Warray-bounds=2 -Wimplicit-fallthrough=3 -Wshift-overflow=2 \
+              -Wcast-qual -Wstringop-overflow=4 -Wconversion \
+              -Warith-conversion -Wlogical-op -Wduplicated-cond \
+              -Wduplicated-branches -Wshadow -Wundef
+ci: clean $(TARGET)
+	@echo "CI strict build complete!"
+
 # Install the executable
 install: $(TARGET)
 	@echo "Installing $(TARGET) to $(BINDIR)..."

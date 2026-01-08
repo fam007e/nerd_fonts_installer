@@ -1,0 +1,102 @@
+# Advanced CodeQL security analysis workflow
+# Runs matrix-based security scanning for multiple languages
+
+name: "CodeQL Advanced"
+
+on:
+  push:
+    branches: ["main", "master", "develop"]
+    paths:
+      - "**.c"
+      - "**.h"
+      - "**.cpp"
+      - "**.hpp"
+      - "**.sh"
+      - ".github/workflows/**"
+  pull_request:
+    branches: ["main", "master", "develop"]
+  schedule:
+    # Run weekly on Saturday at 09:27 UTC
+    - cron: '27 9 * * 6'
+  workflow_dispatch:
+
+# Avoid running multiple instances
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 60 }}
+
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # GitHub Actions workflow analysis
+          - language: actions
+            build-mode: none
+
+          # C/C++ analysis with autobuild
+          - language: c-cpp
+            build-mode: manual
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Install dependencies for C/C++ build
+      - name: Install C/C++ dependencies
+        if: matrix.language == 'c-cpp'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libcurl4-openssl-dev \
+            libjansson-dev \
+            pkg-config
+
+      # Initialize CodeQL
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config-file: .github/codeql-config.yml
+          # Enable extended security queries
+          queries: security-extended,security-and-quality
+          # Configure source root
+          source-root: ${{ github.workspace }}
+
+      # Manual build for C/C++
+      - name: Build C/C++ code
+        if: matrix.build-mode == 'manual' && matrix.language == 'c-cpp'
+        run: make all
+
+      # Perform CodeQL analysis
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        if: always()
+        with:
+          category: "/language:${{ matrix.language }}"
+          output: sarif-results
+          upload: always
+
+      # Upload SARIF for enhanced visibility
+      - name: Upload SARIF results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: codeql-sarif-${{ matrix.language }}
+          path: sarif-results/**/*.sarif
+          retention-days: 30
