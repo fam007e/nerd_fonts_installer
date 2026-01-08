@@ -155,8 +155,7 @@ static int secure_unlink(const char *filepath) {
 // ============================================================================
 
 // Callback function for libcurl to write response data
-// cppcheck-suppress constParameterCallback
-static size_t write_callback(char *contents, size_t size, size_t nmemb,
+static size_t write_callback(const char *contents, size_t size, size_t nmemb,
                              void *userp) {
   struct HTTPResponse *response = (struct HTTPResponse *)userp;
   size_t realsize = size * nmemb;
