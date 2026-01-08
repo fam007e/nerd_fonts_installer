@@ -65,7 +65,8 @@ jobs:
             --minlevel=1 \
             --columns \
             --context \
-            --html > flawfinder_report.html || true
+            --html \
+            ./ > flawfinder_report.html || true
 
           flawfinder \
             --sarif \
