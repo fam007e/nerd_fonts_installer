@@ -268,7 +268,6 @@ static void install_dependencies() {
     install_package(pkg_manager, "fontconfig");
   }
 
-  }
   printf(COLOR_GREEN "✓ All dependencies are installed\n" COLOR_RESET);
 }
 
