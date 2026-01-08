@@ -155,22 +155,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install cppcheck and converter
+      - name: Install cppcheck
         run: |
           sudo apt-get update
-          sudo apt-get install -y cppcheck python3-pip
-          pip3 install cppcheck-sarif
+          sudo apt-get install -y cppcheck
 
       - name: Run cppcheck analysis
         run: |
-          # Generate XML for conversion
+          # Generate SARIF for GitHub Security tab
+          # We use sed to ensure the output starts with the JSON opening brace
           cppcheck --enable=all --inconclusive --force \
                    --suppress=missingIncludeSystem \
-                   --xml --xml-version=2 \
-                   . 2> cppcheck_results.xml || true
-
-          # Convert XML to SARIF
-          cppcheck-sarif -i cppcheck_results.xml -o cppcheck_results.sarif
+                   --sarif \
+                   . 2>/dev/null | sed -n '/^{/,$p' > cppcheck_results.sarif || true
 
           # Generate text report for summary
           cppcheck --enable=all --inconclusive --force \
@@ -187,9 +184,13 @@ jobs:
       - name: Display cppcheck results
         run: |
           echo "## cppcheck Analysis Results" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat cppcheck_report.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ -f cppcheck_report.txt ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat cppcheck_report.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No findings or report not generated." >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Upload cppcheck artifacts
         uses: actions/upload-artifact@v4
