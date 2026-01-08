@@ -162,17 +162,22 @@ jobs:
 
       - name: Run cppcheck analysis
         run: |
-          # Generate SARIF for GitHub Security tab
-          # We use sed to ensure the output starts with the JSON opening brace
+          # Generate XML for conversion to SARIF
           cppcheck --enable=all --inconclusive --force \
                    --suppress=missingIncludeSystem \
-                   --sarif \
-                   . 2>/dev/null | sed -n '/^{/,$p' > cppcheck_results.sarif || true
+                   --xml --xml-version=2 \
+                   . 2> cppcheck_report.xml || true
 
           # Generate text report for summary
           cppcheck --enable=all --inconclusive --force \
                    --suppress=missingIncludeSystem \
                    . 2> cppcheck_report.txt || true
+
+      - name: Convert to SARIF
+        uses: Flast/cppcheck-sarif@v2
+        with:
+          input: cppcheck_report.xml
+          output: cppcheck_results.sarif
 
       - name: Upload SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
@@ -199,6 +204,7 @@ jobs:
           name: cppcheck-results
           path: |
             cppcheck_results.sarif
+            cppcheck_report.xml
             cppcheck_report.txt
           retention-days: 30
 
