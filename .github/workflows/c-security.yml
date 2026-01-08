@@ -174,7 +174,7 @@ jobs:
                    . 2> cppcheck_report.txt || true
 
       - name: Convert to SARIF
-        uses: Flast/cppcheck-sarif@6065406059d0a68d896191ced5c5897f74812836 # v2.0.2
+        uses: Flast/cppcheck-sarif@2845d63261f33914953ac34cbfb2c6b105b6780e # v2.0
         with:
           input: cppcheck_report.xml
           output: cppcheck_results.sarif
