@@ -210,12 +210,18 @@ Fonts are installed to `~/.local/share/fonts/` following XDG specifications:
 - ✅ **Standard location** - Compatible with all applications
 - ✅ **Easy management** - Simple to backup or remove
 
-### ⚡ Performance Comparison
+### ⚡ Performance & Security
+| Version | Dependencies | Speed | Memory | Security | verification |
+|:--------|:-------------|:------|:-------|:----------|:-------------|
+| **C Binary** | libcurl, libjansson | 🔥 Fast | 💚 Low | 🛡️ **Hardened** (PIE, RELRO, Canary) | ✅ **Verified** (ASan, MSan, CodeQL, Flawfinder) |
+| **Shell Script** | bash, curl, unzip | 🐌 Slower | 🟡 Higher | ⚠️ Basic | ❌ Manual Check Only |
 
-| Version | Dependencies | Speed | Memory | Security | JSON Parsing | Recommended Use |
-|:--------|:-------------|:------|:-------|:---------------|:-------------|:----------------|
-| **C Binary** | libcurl, libjansson | 🔥 Fast | 💚 Low | 🛡️ Hardened (PIE, Full RELRO, Stack Canary) | 🚀 Native | Production, Daily use |
-| **Shell Script** | bash, curl, unzip | 🐌 Slower | 🟡 Higher | ⚠️ Basic | 🔧 awk-based | Testing, Quick installs |
+### 🔒 Security Measures
+
+The C version is built with a defense-in-depth approach:
+- **Sanitizers**: Continuous testing with AddressSanitizer (ASan), MemorySanitizer (MSan), and ThreadSanitizer (TSan).
+- **Static Analysis**: Scanned weekly with CodeQL, CppCheck, and Flawfinder.
+- **Hardening**: Compiled with `-fstack-protector-strong`, `-fPIE`, `-Wl,-z,relro`, and `-Wl,-z,noexecstack`.
 
 ---
 

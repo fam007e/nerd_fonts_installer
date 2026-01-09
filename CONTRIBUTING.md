@@ -61,6 +61,60 @@ Unsure where to begin contributing? You can start by looking through these `good
 5. Update the documentation (like the `README.md`) if appropriate.
 6. Open a Pull Request pointing to the `main` branch.
 
+## Continuous Integration & Quality Standards
+
+This repository enforces strict quality and security standards. All Pull Requests must pass the following checks to be eligible for merging.
+
+### Branch Protection Rules
+
+- **Linear History**: Merge commits are blocked. Please rebase your branch on `main` before submitting.
+- **Strict Status Checks**: All CI jobs listed below must pass.
+- **No Force Pushes**: Force pushing to `main` is disabled.
+
+### Mandatory CI Checks
+
+We recommend running these checks locally to identify issues early.
+
+#### 1. Security Sanitizers
+The codebase is tested against multiple sanitizers to detect memory and threading errors.
+
+*   **AddressSanitizer (ASan)**: Detects buffer overflows and use-after-free.
+    ```bash
+    gcc -fsanitize=address -g -O1 -o nerdfonts_installer_asan nerdfonts_installer.c $(pkg-config --libs libcurl jansson)
+    ```
+
+*   **MemorySanitizer (MSan)**: Detects uninitialized memory reads (requires Clang).
+    ```bash
+    clang -fsanitize=memory -fno-omit-frame-pointer -g -O1 -o nerdfonts_installer_msan nerdfonts_installer.c $(pkg-config --libs libcurl jansson)
+    ```
+
+*   **ThreadSanitizer (TSan)**: Detects data races.
+    ```bash
+    gcc -fsanitize=thread -g -O1 -o nerdfonts_installer_tsan nerdfonts_installer.c $(pkg-config --libs libcurl jansson)
+    ```
+
+#### 2. Static Analysis Tools
+We use a suite of static analysis tools to maintain code quality.
+
+*   **CppCheck**:
+    ```bash
+    cppcheck --enable=all --inconclusive --force --suppress=missingIncludeSystem .
+    ```
+
+*   **Flawfinder**:
+    ```bash
+    # Install: pip install flawfinder
+    flawfinder --minlevel=1 --context ./
+    ```
+
+*   **Clang Static Analyzer**:
+    ```bash
+    # Requires clang-tools
+    scan-build gcc -Wall -Wextra -o nerdfonts_installer nerdfonts_installer.c $(pkg-config --cflags --libs libcurl jansson)
+    ```
+
+*   **CodeQL**: Runs automatically on GitHub. Ensure your code does not introduce taint tracking paths (e.g., user input reaching file system APIs without sanitization).
+
 ## Styleguides
 
 ### C Code

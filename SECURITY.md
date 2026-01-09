@@ -7,8 +7,27 @@ currently being supported with security updates.
 
 | Version | Supported          |
 | ------- | ------------------ |
+| v2026.x.x.x | :white_check_mark: |
 | v2025.x.x.x | :white_check_mark: |
 | < v2025.x.x.x | :x:                |
+
+## Security Measures
+
+We employ a comprehensive set of automated security checks to prevent vulnerabilities:
+
+*   **Static Application Security Testing (SAST)**:
+    *   **CodeQL**: Runs on every push to detect semantic security flaws.
+    *   **Flawfinder**: Scans C/C++ code for potential security risks.
+    *   **CppCheck**: Checks for undefined behavior and dangerous coding constructs.
+    *   **Clang Static Analyzer**: Performs deep analysis of code paths.
+
+*   **Dynamic Analysis**:
+    *   **AddressSanitizer (ASan)**: Detects memory corruption bugs (buffer overflows, use-after-free).
+    *   **MemorySanitizer (MSan)**: Detects use of uninitialized memory.
+    *   **ThreadSanitizer (TSan)**: Detects data races in concurrent code.
+
+*   **Compiler Hardening**:
+    *   Executables are built with PIE, Stack Canaries, and Full RELRO.
 
 ## Reporting a Vulnerability
 
