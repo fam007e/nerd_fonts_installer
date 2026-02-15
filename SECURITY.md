@@ -7,9 +7,10 @@ currently being supported with security updates.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| v2026.x.x.x | :white_check_mark: |
-| v2025.x.x.x | :white_check_mark: |
-| < v2025.x.x.x | :x:                |
+| Version | Supported          |
+| ------- | ------------------ |
+| >= v2026.01.09 | :white_check_mark: |
+| < v2026.01.09 | :x:                |
 
 ## Security Measures
 
