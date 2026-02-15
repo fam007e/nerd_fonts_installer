@@ -413,17 +413,40 @@ static void fetch_available_fonts() {
   printf("%s", COLOR_RESET); // flawfinder: ignore
 }
 
-// Function to print fonts in columns, adapting to terminal width
-static void print_fonts_in_columns() {
-  int term_width = 80; // Default terminal width
+// Helper function to get terminal width
+static int get_term_width() {
+  int term_width = 80; // Default fallback
   struct winsize w;
   int fd = open("/dev/tty", O_RDWR); // flawfinder: ignore
   if (fd >= 0) {
     if (ioctl(fd, TIOCGWINSZ, &w) == 0) {
-      term_width = w.ws_col;
+      if (w.ws_col > 10) { // Sanity check
+        term_width = w.ws_col;
+      }
     }
     close(fd);
   }
+  return term_width;
+}
+
+// Function to print a separator line
+static void print_separator() {
+  int width = get_term_width();
+  char *line = malloc(width + 1);
+  if (line) {
+    memset(line, '-', width);
+    line[width] = '\0';
+    printf("%s\n", line); // flawfinder: ignore
+    free(line);
+  } else {
+    // Fallback if malloc fails
+    printf("---------------------------------------------\n"); // flawfinder: ignore
+  }
+}
+
+// Function to print fonts in columns, adapting to terminal width
+static void print_fonts_in_columns() {
+  int term_width = get_term_width();
 
   // Find the widest font name
   int max_len = 0;
@@ -854,7 +877,8 @@ int main() {
   // Initialize curl
   curl_global_init(CURL_GLOBAL_DEFAULT);
   printf("%s", COLOR_GREEN "🚀 Nerd Fonts Installer\n" COLOR_RESET); // flawfinder: ignore
-  printf("════════════════════════\n\n"); // flawfinder: ignore
+  print_separator();
+  printf("\n"); // flawfinder: ignore
 
   // Install dependencies
   install_dependencies();
@@ -868,9 +892,10 @@ int main() {
   // Display font selection menu
   printf("%s", COLOR_GREEN "Select fonts to install (separate with spaces, or enter " // flawfinder: ignore
                      "\"all\" to install all fonts):\n" COLOR_RESET); // flawfinder: ignore
-  printf("---------------------------------------------\n"); // flawfinder: ignore
+  print_separator();
   display_fonts_with_pager();
-  printf("---------------------------------------------\n\n"); // flawfinder: ignore
+  print_separator();
+  printf("\n"); // flawfinder: ignore
 
   // Get user selection
   int selected_indices[MAX_FONTS];

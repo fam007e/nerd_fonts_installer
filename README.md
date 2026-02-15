@@ -23,6 +23,8 @@
 ---
 
 ## 🚀 Quick Start
+> [!IMPORTANT]
+> **Security Notice**: Please ensure you are using version `v2026.01.09` or newer. Older versions are considered unsupported.
 
 ### One-Line Installation (Recommended)
 
@@ -162,17 +164,21 @@ chmod +x nerdfonts_installer.sh
 
 ## 🐧 Supported Distributions
 
-| Distribution | Package Manager | Status | Notes |
-|:-------------|:----------------|:------:|:------|
-| **Arch Linux** | `pacman` | ✅ | AUR package available |
-| **Manjaro** | `pacman` | ✅ | Full compatibility |
-| **EndeavourOS** | `pacman` | ✅ | Full compatibility |
-| **Ubuntu** | `apt-get` | ✅ | All LTS versions |
-| **Debian** | `apt-get` | ✅ | Stable and testing |
-| **Linux Mint** | `apt-get` | ✅ | All versions |
-| **Fedora** | `dnf` | ✅ | Recent versions |
-| **CentOS** | `yum` | ✅ | 7, 8, Stream |
-| **RHEL** | `yum` | ✅ | 7, 8, 9 |
+| Distribution | Package Manager | Shell Script | C Binary | Notes |
+|:-------------|:----------------|:------------:|:--------:|:------|
+| **Arch Linux** | `pacman` | ✅ | ✅ | AUR package available |
+| **Manjaro** | `pacman` | ✅ | ✅ | Full compatibility |
+| **EndeavourOS** | `pacman` | ✅ | ✅ | Full compatibility |
+| **Ubuntu 22.04+** | `apt-get` | ✅ | ✅ | GLIBC 2.35+ required for binary |
+| **Ubuntu < 22.04** | `apt-get` | ✅ | ⚠️ | Use Shell Script (Binary may fail) |
+| **Debian 12+** | `apt-get` | ✅ | ✅ | Stable and testing |
+| **Debian < 12** | `apt-get` | ✅ | ⚠️ | Use Shell Script (Binary may fail) |
+| **Linux Mint 21+** | `apt-get` | ✅ | ✅ | All versions |
+| **Fedora 34+** | `dnf` | ✅ | ✅ | Recent versions |
+| **CentOS 7/8** | `yum` | ✅ | ❌ | **Use Shell Script** (Binary requires new GLIBC) |
+| **RHEL 7/8/9** | `yum` | ✅ | ⚠️ | RHEL 9 OK, older usage Shell Script |
+
+> **Note**: The C Binary is built on Ubuntu Latest and requires a recent GLIBC. For older distributions (CentOS 7, Ubuntu 18.04, etc.), please us the **Shell Script** version.
 
 > **Note**: Other distributions may work but are not officially tested.
 
