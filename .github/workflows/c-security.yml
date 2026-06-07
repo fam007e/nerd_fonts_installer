@@ -6,18 +6,8 @@ name: C Security Build
 on:
   push:
     branches: ["main", "master", "develop"]
-    paths:
-      - "**.c"
-      - "**.h"
-      - "Makefile"
-      - "**.md"
   pull_request:
     branches: ["main", "master", "develop"]
-    paths:
-      - "**.c"
-      - "**.h"
-      - "Makefile"
-      - "**.md"
   workflow_dispatch:
 
 concurrency:

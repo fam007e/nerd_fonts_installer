@@ -34,8 +34,8 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
           COMMIT_URL: ${{ github.event.head_commit.url }}
-          # PR
-          PR_ACTION: ${{ github.event.action }}
+          # EVENT ACTION (PR, Issue, Release)
+          EVENT_ACTION: ${{ github.event.action }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_URL: ${{ github.event.pull_request.html_url }}
@@ -75,22 +75,23 @@ jobs:
                 "$REPOSITORY" "$ACTOR" "$REF_NAME" "$SHA" "$COMMIT_URL")
               ;;
             pull_request)
-              LABEL="${PR_ACTION^}"
+              LABEL="${EVENT_ACTION^}"
               CONTENT=$(printf '📋 **Pull Request %s** in `%s` by **%s**\n\n[#%s: %s](%s)' \
                 "$LABEL" "$REPOSITORY" "$ACTOR" "$PR_NUMBER" "$PR_TITLE" "$PR_URL")
               ;;
             pull_request_review)
-              LABEL="${REVIEW_STATE^}"
+              LABEL="${REVIEW_STATE//_/ }"
+              LABEL="${LABEL^}"
               CONTENT=$(printf '👀 **Pull Request Review %s** in `%s` by **%s**\n\n[#%s: %s](%s)' \
                 "$LABEL" "$REPOSITORY" "$ACTOR" "$PR_NUMBER" "$PR_TITLE" "$PR_URL")
               ;;
             issues)
-              LABEL="${PR_ACTION^}"
+              LABEL="${EVENT_ACTION^}"
               CONTENT=$(printf '🐛 **Issue %s** in `%s` by **%s**\n\n[#%s: %s](%s)' \
                 "$LABEL" "$REPOSITORY" "$ACTOR" "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_URL")
               ;;
             release)
-              LABEL="${PR_ACTION^}"
+              LABEL="${EVENT_ACTION^}"
               CONTENT=$(printf '🎉 **Release %s** in `%s`\n\n[%s (%s)](%s)' \
                 "$LABEL" "$REPOSITORY" "$RELEASE_NAME" "$RELEASE_TAG" "$RELEASE_URL")
               ;;
