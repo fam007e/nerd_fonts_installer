@@ -6,14 +6,6 @@ name: "CodeQL Advanced"
 on:
   push:
     branches: ["main", "master", "develop"]
-    paths:
-      - "**.c"
-      - "**.h"
-      - "**.cpp"
-      - "**.hpp"
-      - "**.sh"
-      - ".github/workflows/**"
-      - "**.md"
   pull_request:
     branches: ["main", "master", "develop"]
   schedule:
