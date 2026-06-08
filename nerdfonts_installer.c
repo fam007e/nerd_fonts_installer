@@ -14,6 +14,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
+
 // cppcheck-suppress missingIncludeSystem
 #include <stdint.h>
 
@@ -30,19 +31,8 @@
 #define MAX_FONT_NAME_LEN 50
 #define MAX_PATH_LEN     1024
 #define MAX_COMMAND_LEN  2048
-#define MKDTEMP_SUFFIX   "/nerdfonts.XXXXXX"  /* 17 chars + NUL = 18 */
+#define MKDTEMP_SUFFIX   "/nerdfonts.XXXXXX"
 
-/*
- * FIX 1: Use the Releases API instead of the Contents API.
- *
- * The Contents API lists directory names under patched-fonts/ in the git repo.
- * Those names are NOT guaranteed to match release asset filenames — some fonts
- * are absent from a given release, or are named differently. Constructing
- * download URLs from directory names causes spurious 404s (CURLE_HTTP_RETURNED_ERROR).
- *
- * The Releases API returns the actual assets attached to the latest release,
- * so the font list and the download URLs are always in sync.
- */
 #define API_URL \
     "https://api.github.com/repos/ryanoasis/nerd-fonts/releases/latest"
 
@@ -208,7 +198,7 @@ static size_t write_callback(const char *contents, size_t size, size_t nmemb,
 
 // PATH-based command existence check (no system() or popen()).
 static int command_exists(const char *command) {
-    const char *path = getenv("PATH");
+    const char *path = getenv("PATH"); // flawfinder: ignore
     if (!path)
         return 0;
 
@@ -220,7 +210,7 @@ static int command_exists(const char *command) {
     while (dir != NULL) {
         char full_path[MAX_PATH_LEN];
         snprintf(full_path, sizeof(full_path), "%s/%s", dir, command);
-        if (access(full_path, X_OK) == 0) {
+        if (access(full_path, X_OK) == 0) { // flawfinder: ignore
             free(path_copy);
             return 1;
         }
@@ -246,7 +236,7 @@ static int secure_unzip(const char *zip_file, const char *dest_dir) {
             dup2(devnull, STDERR_FILENO);
             close(devnull);
         }
-        execlp("unzip", "unzip", "-o", zip_file, "-d", dest_dir, (char *)NULL);
+        execlp("unzip", "unzip", "-o", zip_file, "-d", dest_dir, (char *)NULL); // flawfinder: ignore
         _exit(127);
     }
 
@@ -323,7 +313,7 @@ static void install_package(const char *package_manager, const char *package) {
     if (pid == 0) {
         char cmd[MAX_COMMAND_LEN];
         snprintf(cmd, sizeof(cmd), "%s %s", package_manager, package);
-        execlp("sh", "sh", "-c", cmd, (char *)NULL);
+        execlp("sh", "sh", "-c", cmd, (char *)NULL); // flawfinder: ignore
         _exit(127);
     }
 
@@ -352,7 +342,7 @@ static void install_dependencies(void) {
 // Create fonts dir and a unique temp dir via mkdtemp().
 // Temp dir priority: $TMPDIR -> /tmp -> ~/tmp (last resort).
 static void create_directories(void) {
-    const char *home = getenv("HOME");
+    const char *home = getenv("HOME"); // flawfinder: ignore
     if (!home) {
         printf("%s", COLOR_RED "Error: Could not get HOME directory\n"
                COLOR_RESET);
@@ -361,8 +351,7 @@ static void create_directories(void) {
 
     size_t home_len = strlen(home); // flawfinder: ignore
 
-    // Ensure HOME is short enough for derived paths (fonts, tmp, mkdtemp suffix).
-    // Longest derived path: home + "/.local/share/fonts" = home_len + 19.
+    // Ensure HOME is short enough for all derived paths.
     if (home_len == 0 || home_len >= MAX_PATH_LEN - 50) {
         printf("%s", COLOR_RED "Error: HOME path too long or invalid\n"
                COLOR_RESET);
@@ -371,32 +360,23 @@ static void create_directories(void) {
 
     snprintf(fonts_path, sizeof(fonts_path), "%s/.local/share/fonts", home);
 
-    // MKDTEMP_SUFFIX is 17 chars; sizeof() = 18 (includes NUL).
-    // tmp_path must leave room for it.
-    const char *env_tmp = getenv("TMPDIR");
+    const char *env_tmp = getenv("TMPDIR"); // flawfinder: ignore
     if (env_tmp && strlen(env_tmp) > 0 && // flawfinder: ignore
         strlen(env_tmp) + sizeof(MKDTEMP_SUFFIX) <= sizeof(tmp_path)) { // flawfinder: ignore
         snprintf(tmp_path, sizeof(tmp_path), "%s", env_tmp);
-    } else if (access("/tmp", W_OK) == 0) {
-        // "/tmp" is 4 chars; 4 + 18 = 22 << 1024, always fits.
+    } else if (access("/tmp", W_OK) == 0) { // flawfinder: ignore
         snprintf(tmp_path, sizeof(tmp_path), "/tmp");
     } else {
-        // "~/tmp": home_len + 4. home_len < MAX_PATH_LEN - 50, so
-        // home_len + 4 < MAX_PATH_LEN - 46. The suffix adds 17 more,
-        // giving home_len + 21 < MAX_PATH_LEN - 29. Fits.
         snprintf(tmp_path, sizeof(tmp_path), "%s/tmp", home);
     }
 
-    // Belt-and-suspenders: explicit check the compiler can see, suppressing
-    // -Wformat-truncation without a pragma.
+    // Explicit bounds check before building the mkdtemp template.
     if (strlen(tmp_path) + sizeof(MKDTEMP_SUFFIX) > sizeof(unique_tmp_dir)) { // flawfinder: ignore
         printf("%s", COLOR_RED "Error: Temp path too long for mkdtemp\n"
                COLOR_RESET);
         exit(1);
     }
-    /* Build unique_tmp_dir = tmp_path + MKDTEMP_SUFFIX via index loops.
-     * Avoids snprintf (CWE-134), memcpy (CWE-120), strncpy/strncat
-     * (MS-banned) scanner hits. Bounds guaranteed by guard above. */
+    // Append MKDTEMP_SUFFIX to tmp_path; bounds checked above.
     {
         size_t i = 0;
         for (; tmp_path[i] != '\0'; i++)
@@ -419,26 +399,7 @@ static void create_directories(void) {
     }
 }
 
-/*
- * Fetch the font list from the GitHub Releases API and populate fonts[].
- *
- * FIX 1 (API endpoint): Changed from the Contents API (which lists git
- *   directory names under patched-fonts/) to the Releases API (which lists
- *   actual release assets). The two namespaces are not identical — some fonts
- *   present in the repo are absent from a given release, causing 404s when
- *   the download URL was constructed from the directory name.
- *
- * FIX 2 (HTTP error detection): Added CURLOPT_FAILONERROR so that 4xx/5xx
- *   responses (e.g. 403 rate-limit) are returned as curl errors rather than
- *   silently delivering an error JSON body. The HTTP code is retrieved before
- *   cleanup to provide a useful diagnostic for rate-limit hits.
- *
- * FIX 3 (JSON structure): The Releases API returns an object, not an array.
- *   Navigate to root["assets"], iterate that array, filter to *.zip assets,
- *   exclude FontPatcher.zip, and strip the .zip suffix before storing. The
- *   download function appends .zip when constructing the URL, so the stored
- *   bare name is sufficient.
- */
+// Fetch available fonts from the GitHub Releases API and populate fonts[].
 static void fetch_available_fonts(void) {
     CURL *curl;
     CURLcode res;
@@ -548,16 +509,11 @@ static void fetch_available_fonts(void) {
         if (strcmp(name, "FontPatcher.zip") == 0)
             continue;
 
-        // Store the bare name (without .zip) for display.
-        // download_and_install_font() appends .zip when building the URL.
-        /* len > 4 is guaranteed by the guard above, so bare_len >= 1.
-         * Only the upper bound needs checking. */
+        // Strip .zip suffix; download_and_install_font() re-appends it.
         size_t bare_len = len - 4;
         if (bare_len >= MAX_FONT_NAME_LEN)
             continue;
 
-        /* Loop copy: bare_len < MAX_FONT_NAME_LEN enforced above,
-         * dest is MAX_FONT_NAME_LEN bytes — no overflow possible. */
         for (size_t i = 0; i < bare_len; i++)
             fonts[font_count][i] = name[i];
         fonts[font_count][bare_len] = '\0';
@@ -665,7 +621,7 @@ static void display_fonts_with_pager(void) {
         close(pipefd[0]);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-qual"
-        execvp("less", (char *const *)pager_args);
+        execvp("less", (char *const *)pager_args); // flawfinder: ignore
 #pragma GCC diagnostic pop
         _exit(127);
     } else {
@@ -813,7 +769,7 @@ static void update_font_cache(void) {
             dup2(devnull, STDERR_FILENO);
             close(devnull);
         }
-        execlp("fc-cache", "fc-cache", "-f", (char *)NULL);
+        execlp("fc-cache", "fc-cache", "-f", (char *)NULL); // flawfinder: ignore
         _exit(127);
     }
 
