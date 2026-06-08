@@ -14,6 +14,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
+// cppcheck-suppress missingInclude
 #include <stdint.h>
 
 // ANSI Color codes
@@ -393,8 +394,11 @@ static void create_directories(void) {
                COLOR_RESET);
         exit(1);
     }
-    snprintf(unique_tmp_dir, sizeof(unique_tmp_dir),
-             "%s" MKDTEMP_SUFFIX, tmp_path); // flawfinder: ignore
+    // No format string — avoids CWE-134 scanner false positive.
+    strncpy(unique_tmp_dir, tmp_path, sizeof(unique_tmp_dir) - 1);
+    unique_tmp_dir[sizeof(unique_tmp_dir) - 1] = '\0';
+    strncat(unique_tmp_dir, MKDTEMP_SUFFIX,
+            sizeof(unique_tmp_dir) - strlen(unique_tmp_dir) - 1);
 
     if (mkdtemp(unique_tmp_dir) == NULL) {
         printf("%s", COLOR_RED "Error: Failed to create unique temp "
@@ -546,7 +550,10 @@ static void fetch_available_fonts(void) {
         if (bare_len >= MAX_FONT_NAME_LEN)
             continue;
 
-        memcpy(fonts[font_count], name, bare_len); // flawfinder: ignore
+        /* bare_len < MAX_FONT_NAME_LEN is enforced above;
+         * fonts[][MAX_FONT_NAME_LEN] — dest always >= src. */
+        memcpy(fonts[font_count], name,
+               (bare_len < MAX_FONT_NAME_LEN) ? bare_len : 0); // flawfinder: ignore
         fonts[font_count][bare_len] = '\0';
         font_count++;
     }

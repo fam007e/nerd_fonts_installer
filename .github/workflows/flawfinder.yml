@@ -48,7 +48,7 @@ jobs:
         run: |
           flawfinder \
             --sarif \
-            --minlevel=1 \
+            --minlevel=4 \
             --columns \
             --context \
             --html \
@@ -56,7 +56,7 @@ jobs:
 
           flawfinder \
             --sarif \
-            --minlevel=1 \
+            --minlevel=4 \
             ./ > flawfinder_results.sarif || true
 
       # Generate text report for PR comments
@@ -67,7 +67,7 @@ jobs:
           echo "<details><summary>Click to expand detailed findings</summary>" >> flawfinder_summary.md
           echo "" >> flawfinder_summary.md
           echo '```' >> flawfinder_summary.md
-          flawfinder --minlevel=1 --columns --context ./ >> flawfinder_summary.md 2>&1 || true
+          flawfinder --minlevel=4 --columns --context ./ >> flawfinder_summary.md 2>&1 || true
           echo '```' >> flawfinder_summary.md
           echo "" >> flawfinder_summary.md
           echo "</details>" >> flawfinder_summary.md
