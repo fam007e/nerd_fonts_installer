@@ -115,33 +115,31 @@ nerdfonts-installer
 ### Example Session
 
 ```bash
-❯ nerdfonts-installer
+❯ ./nerdfonts-installer
 🚀 Nerd Fonts Installer
-━━━━━━━━━━━━━━━━━━━━━━━━
-
+-------------------------------------------------------------------------------------------------------------------------------------------------
 Detected OS: arch
 ✓ All dependencies are installed
 Fetching available fonts from GitHub...
 Found 70 available fonts
 Select fonts to install (space-separated numbers, or "all"):
----------------------------------------------
-1. 0xProto                      15. CommitMono                  29. Hack                        43. LiberationMono              57. ProggyClean
-2. 3270                         16. Cousine                     30. Hasklig                     44. Lilex                       58. Recursive
-3. AdwaitaMono                  17. D2Coding                    31. HeavyData                   45. MPlus                       59. RobotoMono
-4. Agave                        18. DaddyTimeMono               32. Hermit                      46. MartianMono                 60. ShareTechMono
-5. AnonymousPro                 19. DejaVuSansMono              33. IBMPlexMono                 47. Meslo                       61. SourceCodePro
-6. Arimo                        20. DepartureMono               34. Inconsolata                 48. Monaspace                   62. SpaceMono
-7. AtkinsonHyperlegibleMono     21. DroidSansMono               35. InconsolataGo               49. Monofur                     63. Terminus
-8. AurulentSansMono             22. EnvyCodeR                   36. InconsolataLGC              50. Monoid                      64. Tinos
-9. BigBlueTerminal              23. FantasqueSansMono           37. IntelOneMono                51. Mononoki                    65. Ubuntu
-10. BitstreamVeraSansMono       24. FiraCode                    38. Iosevka                     52. NerdFontsSymbolsOnly        66. UbuntuMono
-11. CascadiaCode                25. FiraMono                    39. IosevkaTerm                 53. Noto                        67. UbuntuSans
-12. CascadiaMono                26. GeistMono                   40. IosevkaTermSlab             54. OpenDyslexic                68. VictorMono
-13. CodeNewRoman                27. Go-Mono                     41. JetBrainsMono               55. Overpass                    69. ZedMono
-14. ComicShannsMono             28. Gohu                        42. Lekton                      56. ProFont                     70. iA-Writer
----------------------------------------------
-
-Enter the numbers of the fonts to install (e.g., "1 2 3") or type "all" to install all fonts:
+-------------------------------------------------------------------------------------------------------------------------------------------------
+1. 0xProto                      15. CommitMono                  29. Hack                        43. Lekton                      57. ProFont
+2. 3270                         16. Cousine                     30. Hasklig                     44. LiberationMono              58. ProggyClean
+3. AdwaitaMono                  17. D2Coding                    31. HeavyData                   45. Lilex                       59. Recursive
+4. Agave                        18. DaddyTimeMono               32. Hermit                      46. MartianMono                 60. RobotoMono
+5. AnonymousPro                 19. DejaVuSansMono              33. iA-Writer                   47. Meslo                       61. ShareTechMono
+6. Arimo                        20. DepartureMono               34. IBMPlexMono                 48. Monaspace                   62. SourceCodePro
+7. AtkinsonHyperlegibleMono     21. DroidSansMono               35. Inconsolata                 49. Monofur                     63. SpaceMono
+8. AurulentSansMono             22. EnvyCodeR                   36. InconsolataGo               50. Monoid                      64. Terminus
+9. BigBlueTerminal              23. FantasqueSansMono           37. InconsolataLGC              51. Mononoki                    65. Tinos
+10. BitstreamVeraSansMono       24. FiraCode                    38. IntelOneMono                52. MPlus                       66. Ubuntu
+11. CascadiaCode                25. FiraMono                    39. Iosevka                     53. NerdFontsSymbolsOnly        67. UbuntuMono
+12. CascadiaMono                26. GeistMono                   40. IosevkaTerm                 54. Noto                        68. UbuntuSans
+13. CodeNewRoman                27. Go-Mono                     41. IosevkaTermSlab             55. OpenDyslexic                69. VictorMono
+14. ComicShannsMono             28. Gohu                        42. JetBrainsMono               56. Overpass                    70. ZedMono
+-------------------------------------------------------------------------------------------------------------------------------------------------
+Enter font numbers (e.g. "1 2 3") or "all":
 
 ```
 
@@ -220,7 +218,7 @@ Fonts are installed to `~/.local/share/fonts/` following XDG specifications:
 ### ⚡ Performance & Security
 | Version | Dependencies | Speed | Memory | Security | verification |
 |:--------|:-------------|:------|:-------|:----------|:-------------|
-| **C Binary** | libcurl, libjansson | 🔥 Fast | 💚 Low | 🛡️ **Hardened** (PIE, RELRO, Canary) | ✅ **Verified** (ASan, MSan, CodeQL, Flawfinder) |
+| **C Binary** | libcurl, libjansson | 🔥 Fast | 💚 Low | 🛡️ **Hardened** (PIE, Full RELRO, Canary, FORTIFY_SOURCE=2) | ✅ **Verified** (ASan, MSan, CodeQL, Flawfinder) |
 | **Shell Script** | bash, curl, unzip | 🐌 Slower | 🟡 Higher | ⚠️ Basic | ❌ Manual Check Only |
 
 ### 🔒 Security Measures
@@ -228,7 +226,7 @@ Fonts are installed to `~/.local/share/fonts/` following XDG specifications:
 The C version is built with a defense-in-depth approach:
 - **Sanitizers**: Continuous testing with AddressSanitizer (ASan), MemorySanitizer (MSan), and ThreadSanitizer (TSan).
 - **Static Analysis**: Scanned weekly with CodeQL, CppCheck, and Flawfinder.
-- **Hardening**: Compiled with `-fstack-protector-strong`, `-fPIE`, `-Wl,-z,relro`, and `-Wl,-z,noexecstack`.
+- **Hardening**: Compiled with `-fstack-protector-strong`, `-fPIE`, `-Wl,-z,relro,-z,now` (Full RELRO), `-Wl,-z,noexecstack`, and `-D_FORTIFY_SOURCE=2`.
 
 ---
 
@@ -258,8 +256,11 @@ make clean
 ├── 📄 nerdfonts_installer.c    # Main C implementation
 ├── 📄 nerdfonts_installer.sh   # Shell script version
 ├── 📄 Makefile                 # Build configuration
-├── 📄 LICENSE                 # MIT license
-└── 📄 README.md               # Documentation
+├── 📄 LICENSE                  # MIT license
+├── 📄 README.md                # Documentation
+├── 📄 CONTRIBUTING.md          # Contribution guidelines and CI requirements
+├── 📄 SECURITY.md              # Security policy and vulnerability reporting
+└── 📄 CODE_OF_CONDUCT.md       # Community standards
 ```
 
 ---

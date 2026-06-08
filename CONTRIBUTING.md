@@ -75,6 +75,16 @@ This repository enforces strict quality and security standards. All Pull Request
 
 We recommend running these checks locally to identify issues early.
 
+#### CI Strict Build (Recommended First Step)
+
+The Makefile provides a `ci` target that mirrors the strict compiler flags used in CI. Run this first — it catches the majority of issues that would block a PR:
+
+```bash
+make ci
+```
+
+This builds with an extended set of gcc warning flags (`-Wformat=2`, `-Wformat-overflow=2`, `-Wnull-dereference`, `-Warray-bounds=2`, `-Wconversion`, `-Wshadow`, `-Wlogical-op`, `-Wduplicated-cond`, and more) layered on top of the standard security hardening flags. A clean `make ci` is a strong indicator that the sanitizer and static analysis runs will also pass.
+
 #### 1. Security Sanitizers
 The codebase is tested against multiple sanitizers to detect memory and threading errors.
 
