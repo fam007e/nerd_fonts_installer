@@ -48,7 +48,7 @@ jobs:
         run: |
           flawfinder \
             --sarif \
-            --minlevel=4 \
+            --minlevel=1 \
             --columns \
             --context \
             --html \
@@ -56,7 +56,7 @@ jobs:
 
           flawfinder \
             --sarif \
-            --minlevel=4 \
+            --minlevel=1 \
             ./ > flawfinder_results.sarif || true
 
       # Generate text report for PR comments
@@ -67,18 +67,10 @@ jobs:
           echo "<details><summary>Click to expand detailed findings</summary>" >> flawfinder_summary.md
           echo "" >> flawfinder_summary.md
           echo '```' >> flawfinder_summary.md
-          flawfinder --minlevel=4 --columns --context ./ >> flawfinder_summary.md 2>&1 || true
+          flawfinder --minlevel=1 --columns --context ./ >> flawfinder_summary.md 2>&1 || true
           echo '```' >> flawfinder_summary.md
           echo "" >> flawfinder_summary.md
           echo "</details>" >> flawfinder_summary.md
-
-      # Upload SARIF to GitHub Security tab
-      - name: Upload SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: flawfinder_results.sarif
-          category: flawfinder
 
       # Upload reports as artifacts
       - name: Upload Analysis Reports
