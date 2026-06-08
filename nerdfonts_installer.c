@@ -540,8 +540,10 @@ static void fetch_available_fonts(void) {
 
         // Store the bare name (without .zip) for display.
         // download_and_install_font() appends .zip when building the URL.
+        /* len > 4 is guaranteed by the guard above, so bare_len >= 1.
+         * Only the upper bound needs checking. */
         size_t bare_len = len - 4;
-        if (bare_len == 0 || bare_len >= MAX_FONT_NAME_LEN)
+        if (bare_len >= MAX_FONT_NAME_LEN)
             continue;
 
         memcpy(fonts[font_count], name, bare_len); // flawfinder: ignore
