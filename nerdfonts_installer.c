@@ -393,8 +393,8 @@ static void create_directories(void) {
                COLOR_RESET);
         exit(1);
     }
-    snprintf(unique_tmp_dir, sizeof(unique_tmp_dir), // flawfinder: ignore
-             "%s" MKDTEMP_SUFFIX, tmp_path);
+    snprintf(unique_tmp_dir, sizeof(unique_tmp_dir),
+             "%s" MKDTEMP_SUFFIX, tmp_path); // flawfinder: ignore
 
     if (mkdtemp(unique_tmp_dir) == NULL) {
         printf("%s", COLOR_RED "Error: Failed to create unique temp "
