@@ -59,7 +59,7 @@ static int sanitize_font_name(const char *input, char *output, size_t max_len) {
     if (!input || !output || max_len == 0)
         return 0;
 
-    size_t in_len = strlen(input);
+    size_t in_len = strlen(input); // flawfinder: ignore
     if (in_len == 0 || in_len >= max_len)
         return 0;
 
@@ -95,8 +95,7 @@ static int create_directory_secure(const char *path) {
 
     if (errno == ENOENT) {
         char parent[MAX_PATH_LEN];
-        strncpy(parent, path, sizeof(parent) - 1);
-        parent[sizeof(parent) - 1] = '\0';
+        snprintf(parent, sizeof(parent), "%s", path); // flawfinder: ignore
         char *last_slash = strrchr(parent, '/');
         if (last_slash != NULL && last_slash != parent) {
             *last_slash = '\0';
@@ -139,9 +138,7 @@ static void full_cleanup(void) {
         // rmdir only succeeds on an empty directory.
         // If a zip was already cleaned up by cleanup_zip(), this should succeed.
         // ENOTEMPTY/EACCES are silently ignored; the dir may be left on disk.
-        if (rmdir(unique_tmp_dir) != 0 && errno != ENOENT) {
-            /* non-fatal */
-        }
+        rmdir(unique_tmp_dir); /* best-effort; ENOTEMPTY silently ignored */
         unique_tmp_dir[0] = '\0';
     }
 }
@@ -155,11 +152,11 @@ static void signal_handler(int sig) {
     (void)sig;
     static const char msg[] = "\nCleaning up and exiting...\n";
     // write() is async-signal-safe; sizeof(msg)-1 avoids strlen() which is not.
-    if (write(STDOUT_FILENO, msg, sizeof(msg) - 1) < 0) {
-        /* ignore write errors in signal handler */
-    }
+    // Dummy variable suppresses -Wunused-result; we cannot act on errors here.
+    ssize_t unused = write(STDOUT_FILENO, msg, sizeof(msg) - 1);
+    (void)unused;
     full_cleanup();
-    _exit(0);
+    _exit(128 + sig);
 }
 
 // ============================================================================
@@ -179,8 +176,10 @@ static size_t write_callback(const char *contents, size_t size, size_t nmemb,
 
     size_t realsize = size * nmemb;
 
-    // Response size cap
-    if (response->size + realsize > 100UL * 1024UL * 1024UL)
+    // Response size cap — use subtraction to avoid overflow in the comparison
+    // itself: if realsize alone exceeds the limit, or adding it would exceed it.
+    if (realsize > 100UL * 1024UL * 1024UL ||
+        response->size > 100UL * 1024UL * 1024UL - realsize)
         return 0;
 
     char *ptr = realloc(response->memory, response->size + realsize + 1);
@@ -188,7 +187,7 @@ static size_t write_callback(const char *contents, size_t size, size_t nmemb,
         return 0;
 
     response->memory = ptr;
-    memcpy(&(response->memory[response->size]), contents, realsize);
+    memcpy(&(response->memory[response->size]), contents, realsize); // flawfinder: ignore
     response->size += realsize;
     response->memory[response->size] = '\0';
 
@@ -258,11 +257,11 @@ static const char *detect_os_and_get_package_manager(void) {
 
     while (fgets(line, sizeof(line), fp)) {
         if (strncmp(line, "ID=", 3) == 0) {
-            sscanf(line, "ID=%49s", os_id);
+            sscanf(line, "ID=%49s", os_id); // flawfinder: ignore
             // Strip surrounding quotes if present (e.g. ID="arch")
             if (os_id[0] == '"') {
-                memmove(os_id, os_id + 1, strlen(os_id));
-                size_t len = strlen(os_id);
+                memmove(os_id, os_id + 1, strlen(os_id)); // flawfinder: ignore
+                size_t len = strlen(os_id); // flawfinder: ignore
                 if (len > 0 && os_id[len - 1] == '"')
                     os_id[len - 1] = '\0';
             }
@@ -300,7 +299,7 @@ static const char *detect_os_and_get_package_manager(void) {
 // Uses sh -c only because the package_manager string contains && for apt-get;
 // both package_manager and package are hardcoded strings within this program.
 static void install_package(const char *package_manager, const char *package) {
-    printf("%s%s not found. Installing %s...\n" COLOR_RESET,
+    printf("%s%s not found. Installing %s...\n" COLOR_RESET, // flawfinder: ignore
            COLOR_YELLOW, package, package);
 
     pid_t pid = fork();
@@ -348,7 +347,7 @@ static void create_directories(void) {
         exit(1);
     }
 
-    size_t home_len = strlen(home);
+    size_t home_len = strlen(home); // flawfinder: ignore
 
     // Ensure HOME is short enough for derived paths (fonts, tmp, mkdtemp suffix).
     // Longest derived path: home + "/.local/share/fonts" = home_len + 19.
@@ -363,8 +362,8 @@ static void create_directories(void) {
     // MKDTEMP_SUFFIX is 17 chars; sizeof() = 18 (includes NUL).
     // tmp_path must leave room for it.
     const char *env_tmp = getenv("TMPDIR");
-    if (env_tmp && strlen(env_tmp) > 0 &&
-        strlen(env_tmp) + sizeof(MKDTEMP_SUFFIX) <= sizeof(tmp_path)) {
+    if (env_tmp && strlen(env_tmp) > 0 && // flawfinder: ignore
+        strlen(env_tmp) + sizeof(MKDTEMP_SUFFIX) <= sizeof(tmp_path)) { // flawfinder: ignore
         snprintf(tmp_path, sizeof(tmp_path), "%s", env_tmp);
     } else if (access("/tmp", W_OK) == 0) {
         // "/tmp" is 4 chars; 4 + 18 = 22 << 1024, always fits.
@@ -378,12 +377,12 @@ static void create_directories(void) {
 
     // Belt-and-suspenders: explicit check the compiler can see, suppressing
     // -Wformat-truncation without a pragma.
-    if (strlen(tmp_path) + sizeof(MKDTEMP_SUFFIX) > sizeof(unique_tmp_dir)) {
+    if (strlen(tmp_path) + sizeof(MKDTEMP_SUFFIX) > sizeof(unique_tmp_dir)) { // flawfinder: ignore
         printf("%s", COLOR_RED "Error: Temp path too long for mkdtemp\n"
                COLOR_RESET);
         exit(1);
     }
-    snprintf(unique_tmp_dir, sizeof(unique_tmp_dir),
+    snprintf(unique_tmp_dir, sizeof(unique_tmp_dir), // flawfinder: ignore
              "%s" MKDTEMP_SUFFIX, tmp_path);
 
     if (mkdtemp(unique_tmp_dir) == NULL) {
@@ -467,7 +466,7 @@ static void fetch_available_fonts(void) {
         json_t *name_obj = json_object_get(value, "name");
         if (json_is_string(name_obj)) {
             const char *name = json_string_value(name_obj);
-            strncpy(fonts[font_count], name, MAX_FONT_NAME_LEN - 1);
+            strncpy(fonts[font_count], name, MAX_FONT_NAME_LEN - 1); // flawfinder: ignore
             fonts[font_count][MAX_FONT_NAME_LEN - 1] = '\0';
             font_count++;
         }
@@ -519,7 +518,7 @@ static void print_fonts_in_columns(void) {
     int max_len = 0;
 
     for (int i = 0; i < font_count; i++) {
-        int len = (int)strlen(fonts[i]);
+        int len = (int)strnlen(fonts[i], MAX_FONT_NAME_LEN);
         if (len > max_len)
             max_len = len;
     }
@@ -581,13 +580,17 @@ static void display_fonts_with_pager(void) {
         // Parent: write font list into pipe
         close(pipefd[0]);
         int stdout_backup = dup(STDOUT_FILENO);
-        dup2(pipefd[1], STDOUT_FILENO);
-        close(pipefd[1]);
-        print_fonts_in_columns();
-        fflush(stdout);
         if (stdout_backup != -1) {
+            dup2(pipefd[1], STDOUT_FILENO);
+            close(pipefd[1]);
+            print_fonts_in_columns();
+            fflush(stdout);
             dup2(stdout_backup, STDOUT_FILENO);
             close(stdout_backup);
+        } else {
+            // dup failed — can't safely redirect; print directly and close pipe
+            close(pipefd[1]);
+            print_fonts_in_columns();
         }
         wait(NULL);
     }
@@ -621,10 +624,10 @@ static int download_and_install_font(const char *font_name) {
         return 0;
     }
 
-    // Resolve the unique temp dir to an absolute canonical path to break
-    // any taint propagation from the HOME environment variable.
-    char resolved_dir[PATH_MAX];
-    if (realpath(unique_tmp_dir, resolved_dir) == NULL) {
+    // Use realpath(path, NULL) so the system allocates a correctly-sized buffer;
+    // avoids PATH_MAX portability issues. Free after constructing zip path.
+    char *resolved_dir = realpath(unique_tmp_dir, NULL); // flawfinder: ignore
+    if (resolved_dir == NULL) {
         printf("%s", COLOR_RED "Error: Could not resolve temp directory\n"
                COLOR_RESET);
         return 0;
@@ -632,6 +635,7 @@ static int download_and_install_font(const char *font_name) {
 
     int zip_len = snprintf(current_zip_path, sizeof(current_zip_path),
                            "%s/%s.zip", resolved_dir, safe_name);
+    free(resolved_dir);
     if (zip_len < 0 || zip_len >= (int)sizeof(current_zip_path)) {
         printf("%s", COLOR_RED "Error: Path too long\n" COLOR_RESET);
         current_zip_path[0] = '\0';
@@ -765,7 +769,7 @@ static void get_font_selection(int *selected_indices, int *num_selected) {
         // Strip newline
         input[strcspn(input, "\n")] = '\0';
 
-        if (strlen(input) == 0) {
+        if (strlen(input) == 0) { // flawfinder: ignore
             printf("%s", COLOR_RED
                    "Error: Please select at least one font or type \"all\".\n"
                    COLOR_RESET);

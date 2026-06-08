@@ -104,6 +104,10 @@ print_fonts_in_columns() {
 
 # Create temporary working directory
 TMPWORKDIR=$(mktemp -d "${TMPDIR:-/tmp}/nerdfonts.XXXXXX")
+if [ ! -d "$TMPWORKDIR" ]; then
+    printf "%b\n" '\033[0;31mError: Failed to create temporary directory. Aborting.\033[0m'
+    exit 1
+fi
 
 # Cleanup function for temporary files
 cleanup() {
@@ -113,8 +117,8 @@ cleanup() {
     exit 0
 }
 
-# Trap interrupts to ensure cleanup
-trap cleanup SIGINT SIGTERM
+# Trap interrupts and normal exit to ensure cleanup in all scenarios
+trap cleanup SIGINT SIGTERM EXIT
 
 # Detect OS and set package manager, then install dependencies
 detect_os_and_set_package_manager
