@@ -75,22 +75,32 @@ This repository enforces strict quality and security standards. All Pull Request
 
 We recommend running these checks locally to identify issues early.
 
+#### CI Strict Build (Recommended First Step)
+
+The Makefile provides a `ci` target that mirrors the strict compiler flags used in CI. Run this first — it catches the majority of issues that would block a PR:
+
+```bash
+make ci
+```
+
+This builds with an extended set of gcc warning flags (`-Wformat=2`, `-Wformat-overflow=2`, `-Wnull-dereference`, `-Warray-bounds=2`, `-Wconversion`, `-Wshadow`, `-Wlogical-op`, `-Wduplicated-cond`, and more) layered on top of the standard security hardening flags. A clean `make ci` is a strong indicator that the sanitizer and static analysis runs will also pass.
+
 #### 1. Security Sanitizers
 The codebase is tested against multiple sanitizers to detect memory and threading errors.
 
 *   **AddressSanitizer (ASan)**: Detects buffer overflows and use-after-free.
     ```bash
-    gcc -fsanitize=address -g -O1 -o nerdfonts_installer_asan nerdfonts_installer.c $(pkg-config --libs libcurl jansson)
+    gcc -fsanitize=address -g -O1 -o nerdfonts_installer_asan nerdfonts_installer.c $(pkg-config --cflags --libs libcurl jansson)
     ```
 
 *   **MemorySanitizer (MSan)**: Detects uninitialized memory reads (requires Clang).
     ```bash
-    clang -fsanitize=memory -fno-omit-frame-pointer -g -O1 -o nerdfonts_installer_msan nerdfonts_installer.c $(pkg-config --libs libcurl jansson)
+    clang -fsanitize=memory -fno-omit-frame-pointer -g -O1 -o nerdfonts_installer_msan nerdfonts_installer.c $(pkg-config --cflags --libs libcurl jansson)
     ```
 
 *   **ThreadSanitizer (TSan)**: Detects data races.
     ```bash
-    gcc -fsanitize=thread -g -O1 -o nerdfonts_installer_tsan nerdfonts_installer.c $(pkg-config --libs libcurl jansson)
+    gcc -fsanitize=thread -g -O1 -o nerdfonts_installer_tsan nerdfonts_installer.c $(pkg-config --cflags --libs libcurl jansson)
     ```
 
 #### 2. Static Analysis Tools
@@ -124,6 +134,7 @@ We use a suite of static analysis tools to maintain code quality.
   - Avoid `system()` calls; use `fork`/`exec` family functions for subprocesses.
   - Validate all external inputs (filenames, user selection, API responses).
   - Use safe string functions (e.g., `snprintf` instead of `sprintf`).
+  - Prefer `memcpy` + explicit null terminator over `strncpy` when length is already validated (helps avoid `-Wstringop-truncation`).
 - **Error Handling**: Implement comprehensive error checking for all system calls and library functions.
 - **Memory Management**: Ensure all allocated memory is properly freed. Use tools like Valgrind to check for leaks.
 - **Formatting**: Consistent indentation (recommend 4 spaces) and bracketing style.
