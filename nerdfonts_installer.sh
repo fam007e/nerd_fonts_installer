@@ -102,10 +102,14 @@ print_fonts_in_columns() {
     done
 }
 
+# Create temporary working directory
+TMPWORKDIR=$(mktemp -d "${TMPDIR:-/tmp}/nerdfonts.XXXXXX")
+
 # Cleanup function for temporary files
 cleanup() {
-    printf "%b\n" '\033[0;33mCleaning up temporary files...\033[0m'
-    rm -rf "$HOME/tmp"/*.zip 2>/dev/null
+    if [ -n "$TMPWORKDIR" ] && [ -d "$TMPWORKDIR" ]; then
+        rm -rf "$TMPWORKDIR"
+    fi
     exit 0
 }
 
@@ -116,9 +120,8 @@ trap cleanup SIGINT SIGTERM
 detect_os_and_set_package_manager
 install_dependencies
 
-# Create directories
+# Create fonts directory
 mkdir -p "$HOME/.local/share/fonts"
-mkdir -p "$HOME/tmp"
 
 # Fetch available fonts
 fetch_available_fonts
@@ -186,9 +189,9 @@ for font in "${selected_fonts[@]}"; do
 
     # Check if font exists before downloading
     if curl -s --head --fail "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$font_name.zip" >/dev/null 2>&1; then
-        curl -sSLo "$HOME/tmp/$font_name.zip" "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$font_name.zip"
-        unzip -o "$HOME/tmp/$font_name.zip" -d "$HOME/.local/share/fonts" >/dev/null
-        rm "$HOME/tmp/$font_name.zip"
+        curl -sSLo "$TMPWORKDIR/$font_name.zip" "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$font_name.zip"
+        unzip -o "$TMPWORKDIR/$font_name.zip" -d "$HOME/.local/share/fonts" >/dev/null
+        rm "$TMPWORKDIR/$font_name.zip"
         printf "%b\n" '\033[0;32m'"$font"' installed successfully\033[0m'
     else
         printf "%b\n" '\033[0;31mWarning: '"$font"' not found in releases, skipping...\033[0m'

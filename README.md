@@ -4,6 +4,7 @@
 
 [![GitHub stars](https://img.shields.io/github/stars/fam007e/nerd_fonts_installer?style=for-the-badge&logo=github)](https://github.com/fam007e/nerd_fonts_installer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Release Binary](https://github.com/fam007e/nerd_fonts_installer/actions/workflows/release.yml/badge.svg)](https://github.com/fam007e/nerd_fonts_installer/actions/workflows/release.yml)
 [![Packaging status](https://repology.org/badge/vertical-allrepos/nerdfonts-installer.svg)](https://repology.org/project/nerdfonts-installer/versions)
 
 ---
@@ -122,7 +123,7 @@ Detected OS: arch
 ✓ All dependencies are installed
 Fetching available fonts from GitHub...
 Found 70 available fonts
-Select fonts to install (separate with spaces, or enter "all" to install all fonts):
+Select fonts to install (space-separated numbers, or "all"):
 ---------------------------------------------
 1. 0xProto                      15. CommitMono                  29. Hack                        43. LiberationMono              57. ProggyClean
 2. 3270                         16. Cousine                     30. Hasklig                     44. Lilex                       58. Recursive
@@ -178,7 +179,7 @@ chmod +x nerdfonts_installer.sh
 | **CentOS 7/8** | `yum` | ✅ | ❌ | **Use Shell Script** (Binary requires new GLIBC) |
 | **RHEL 7/8/9** | `yum` | ✅ | ⚠️ | RHEL 9 OK, older usage Shell Script |
 
-> **Note**: The C Binary is built on Ubuntu Latest and requires a recent GLIBC. For older distributions (CentOS 7, Ubuntu 18.04, etc.), please us the **Shell Script** version.
+> **Note**: The C Binary is built on Ubuntu Latest and requires a recent GLIBC. For older distributions (CentOS 7, Ubuntu 18.04, etc.), please use the **Shell Script** version.
 
 > **Note**: Other distributions may work but are not officially tested.
 

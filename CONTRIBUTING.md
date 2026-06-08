@@ -80,17 +80,17 @@ The codebase is tested against multiple sanitizers to detect memory and threadin
 
 *   **AddressSanitizer (ASan)**: Detects buffer overflows and use-after-free.
     ```bash
-    gcc -fsanitize=address -g -O1 -o nerdfonts_installer_asan nerdfonts_installer.c $(pkg-config --libs libcurl jansson)
+    gcc -fsanitize=address -g -O1 -o nerdfonts_installer_asan nerdfonts_installer.c $(pkg-config --cflags --libs libcurl jansson)
     ```
 
 *   **MemorySanitizer (MSan)**: Detects uninitialized memory reads (requires Clang).
     ```bash
-    clang -fsanitize=memory -fno-omit-frame-pointer -g -O1 -o nerdfonts_installer_msan nerdfonts_installer.c $(pkg-config --libs libcurl jansson)
+    clang -fsanitize=memory -fno-omit-frame-pointer -g -O1 -o nerdfonts_installer_msan nerdfonts_installer.c $(pkg-config --cflags --libs libcurl jansson)
     ```
 
 *   **ThreadSanitizer (TSan)**: Detects data races.
     ```bash
-    gcc -fsanitize=thread -g -O1 -o nerdfonts_installer_tsan nerdfonts_installer.c $(pkg-config --libs libcurl jansson)
+    gcc -fsanitize=thread -g -O1 -o nerdfonts_installer_tsan nerdfonts_installer.c $(pkg-config --cflags --libs libcurl jansson)
     ```
 
 #### 2. Static Analysis Tools
