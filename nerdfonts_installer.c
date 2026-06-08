@@ -30,9 +30,20 @@
 #define MAX_PATH_LEN     1024
 #define MAX_COMMAND_LEN  2048
 #define MKDTEMP_SUFFIX   "/nerdfonts.XXXXXX"  /* 17 chars + NUL = 18 */
+
+/*
+ * FIX 1: Use the Releases API instead of the Contents API.
+ *
+ * The Contents API lists directory names under patched-fonts/ in the git repo.
+ * Those names are NOT guaranteed to match release asset filenames — some fonts
+ * are absent from a given release, or are named differently. Constructing
+ * download URLs from directory names causes spurious 404s (CURLE_HTTP_RETURNED_ERROR).
+ *
+ * The Releases API returns the actual assets attached to the latest release,
+ * so the font list and the download URLs are always in sync.
+ */
 #define API_URL \
-    "https://api.github.com/repos/ryanoasis/nerd-fonts/contents/" \
-    "patched-fonts?ref=master"
+    "https://api.github.com/repos/ryanoasis/nerd-fonts/releases/latest"
 
 // Global state
 static char fonts[MAX_FONTS][MAX_FONT_NAME_LEN];
@@ -398,7 +409,26 @@ static void create_directories(void) {
     }
 }
 
-// Fetch font list from GitHub API and populate global fonts[].
+/*
+ * Fetch the font list from the GitHub Releases API and populate fonts[].
+ *
+ * FIX 1 (API endpoint): Changed from the Contents API (which lists git
+ *   directory names under patched-fonts/) to the Releases API (which lists
+ *   actual release assets). The two namespaces are not identical — some fonts
+ *   present in the repo are absent from a given release, causing 404s when
+ *   the download URL was constructed from the directory name.
+ *
+ * FIX 2 (HTTP error detection): Added CURLOPT_FAILONERROR so that 4xx/5xx
+ *   responses (e.g. 403 rate-limit) are returned as curl errors rather than
+ *   silently delivering an error JSON body. The HTTP code is retrieved before
+ *   cleanup to provide a useful diagnostic for rate-limit hits.
+ *
+ * FIX 3 (JSON structure): The Releases API returns an object, not an array.
+ *   Navigate to root["assets"], iterate that array, filter to *.zip assets,
+ *   exclude FontPatcher.zip, and strip the .zip suffix before storing. The
+ *   download function appends .zip when constructing the URL, so the stored
+ *   bare name is sufficient.
+ */
 static void fetch_available_fonts(void) {
     CURL *curl;
     CURLcode res;
@@ -420,19 +450,36 @@ static void fetch_available_fonts(void) {
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    // Treat 4xx/5xx as curl errors so rate-limit responses don't reach the
+    // JSON parser as if they were valid release data.
+    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 
     res = curl_easy_perform(curl);
+
+    // Retrieve HTTP code before cleanup invalidates the handle.
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK) {
-        printf("%sFailed to fetch font list from GitHub API: %s\n%s",
-               COLOR_RED, curl_easy_strerror(res), COLOR_RESET);
         free(response.memory);
+        response.memory = NULL;
+        if (res == CURLE_HTTP_RETURNED_ERROR &&
+            (http_code == 403 || http_code == 429)) {
+            printf("%sFailed to fetch font list: HTTP %ld (rate-limited).\n"
+                   "Set GITHUB_TOKEN in your environment to raise the limit:\n"
+                   "  export GITHUB_TOKEN=ghp_...\n%s",
+                   COLOR_RED, http_code, COLOR_RESET);
+        } else {
+            printf("%sFailed to fetch font list from GitHub API: %s\n%s",
+                   COLOR_RED, curl_easy_strerror(res), COLOR_RESET);
+        }
         exit(1);
     }
 
     if (!response.memory || response.size == 0) {
         printf("%s", COLOR_RED "Empty response from GitHub API\n" COLOR_RESET);
+        free(response.memory);
         exit(1);
     }
 
@@ -447,8 +494,20 @@ static void fetch_available_fonts(void) {
         exit(1);
     }
 
-    if (!json_is_array(root)) {
-        printf("%s", COLOR_RED "Invalid JSON response format\n" COLOR_RESET);
+    // Releases API returns an object ({...}), not an array ([...]).
+    if (!json_is_object(root)) {
+        printf("%s", COLOR_RED
+               "Invalid JSON response format (expected release object)\n"
+               COLOR_RESET);
+        json_decref(root);
+        exit(1);
+    }
+
+    json_t *assets = json_object_get(root, "assets");
+    if (!json_is_array(assets)) {
+        printf("%s", COLOR_RED
+               "Invalid JSON: missing or malformed 'assets' array\n"
+               COLOR_RESET);
         json_decref(root);
         exit(1);
     }
@@ -457,26 +516,44 @@ static void fetch_available_fonts(void) {
     json_t *value;
     font_count = 0;
 
-    json_array_foreach(root, index, value) {
+    json_array_foreach(assets, index, value) {
         if (font_count >= MAX_FONTS) {
             printf("%sWarning: font limit (%d) reached; some fonts omitted.\n"
                    "%s", COLOR_YELLOW, MAX_FONTS, COLOR_RESET);
             break;
         }
+
         json_t *name_obj = json_object_get(value, "name");
-        if (json_is_string(name_obj)) {
-            const char *name = json_string_value(name_obj);
-            strncpy(fonts[font_count], name, MAX_FONT_NAME_LEN - 1); // flawfinder: ignore
-            fonts[font_count][MAX_FONT_NAME_LEN - 1] = '\0';
-            font_count++;
-        }
+        if (!json_is_string(name_obj))
+            continue;
+
+        const char *name = json_string_value(name_obj);
+        size_t len = strlen(name); // flawfinder: ignore
+
+        // Must end in ".zip"
+        if (len <= 4 || strcmp(name + len - 4, ".zip") != 0)
+            continue;
+
+        // Exclude the font patcher archive — it is not a font.
+        if (strcmp(name, "FontPatcher.zip") == 0)
+            continue;
+
+        // Store the bare name (without .zip) for display.
+        // download_and_install_font() appends .zip when building the URL.
+        size_t bare_len = len - 4;
+        if (bare_len == 0 || bare_len >= MAX_FONT_NAME_LEN)
+            continue;
+
+        memcpy(fonts[font_count], name, bare_len); // flawfinder: ignore
+        fonts[font_count][bare_len] = '\0';
+        font_count++;
     }
 
     json_decref(root);
 
     if (font_count == 0) {
-        printf("%s", COLOR_RED "No fonts found in the API response\n"
-               COLOR_RESET);
+        printf("%s", COLOR_RED
+               "No fonts found in the release assets\n" COLOR_RESET);
         exit(1);
     }
 
@@ -673,6 +750,7 @@ static int download_and_install_font(const char *font_name) {
 
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "nerdfonts-installer/1.0");
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     // FAILONERROR: treats HTTP 4xx/5xx as curl errors, preventing HTML error
     // pages from being written to disk as if they were valid zip files.

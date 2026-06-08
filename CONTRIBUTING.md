@@ -124,6 +124,7 @@ We use a suite of static analysis tools to maintain code quality.
   - Avoid `system()` calls; use `fork`/`exec` family functions for subprocesses.
   - Validate all external inputs (filenames, user selection, API responses).
   - Use safe string functions (e.g., `snprintf` instead of `sprintf`).
+  - Prefer `memcpy` + explicit null terminator over `strncpy` when length is already validated (helps avoid `-Wstringop-truncation`).
 - **Error Handling**: Implement comprehensive error checking for all system calls and library functions.
 - **Memory Management**: Ensure all allocated memory is properly freed. Use tools like Valgrind to check for leaks.
 - **Formatting**: Consistent indentation (recommend 4 spaces) and bracketing style.

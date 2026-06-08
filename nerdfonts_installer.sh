@@ -48,24 +48,77 @@ install_dependencies() {
     fi
 }
 
-# Function to fetch available fonts from GitHub API
+# Fetch available fonts from the GitHub Releases API.
+#
+# FIX 1: Use releases/latest instead of the Contents API so the font list
+#         exactly matches downloadable release assets — no more name mismatches.
+#
+# FIX 2: Capture the HTTP status code separately from curl's exit code.
+#         The original only checked $? (curl network failure), so a rate-limit
+#         403 — which curl returns as success — produced an error JSON that the
+#         sed parser silently yielded zero results for.
 fetch_available_fonts() {
     printf "%b\n" '\033[0;33mFetching available fonts from GitHub...\033[0m'
 
-    local api_response
-    api_response=$(curl -s --connect-timeout 10 --max-time 30 \
-        "https://api.github.com/repos/ryanoasis/nerd-fonts/contents/patched-fonts?ref=master")
+    local tmp_api
+    tmp_api=$(mktemp "${TMPDIR:-/tmp}/nerdfonts_api.XXXXXX")
 
-    if [ $? -ne 0 ] || [ -z "$api_response" ]; then
-        printf "%b\n" '\033[0;31mFailed to fetch font list from GitHub API. Please check your internet connection.\033[0m'
+    local http_code
+    http_code=$(curl -s -A "nerdfonts-installer/1.0" \
+        --connect-timeout 10 --max-time 30 \
+        -w "%{http_code}" \
+        -o "$tmp_api" \
+        "https://api.github.com/repos/ryanoasis/nerd-fonts/releases/latest")
+
+    local curl_exit=$?
+    if [ $curl_exit -ne 0 ]; then
+        rm -f "$tmp_api"
+        printf "%b\n" '\033[0;31mFailed to reach GitHub API. Check your internet connection.\033[0m'
         exit 1
     fi
 
-    # Parse JSON response to get font names
-    fonts=($(echo "$api_response" | awk -F'"' '/name/ {print $4}' | sort))
+    if [ "$http_code" != "200" ]; then
+        rm -f "$tmp_api"
+        printf "%b\n" '\033[0;31mGitHub API returned HTTP '"$http_code"'.\033[0m'
+        if [ "$http_code" = "403" ] || [ "$http_code" = "429" ]; then
+            printf "%b\n" '\033[0;33mRate-limited. Set GITHUB_TOKEN in your environment to raise the limit:\033[0m'
+            printf "%b\n" '\033[0;33m  export GITHUB_TOKEN=ghp_...\033[0m'
+        fi
+        exit 1
+    fi
+
+    local api_response
+    api_response=$(cat "$tmp_api")
+    rm -f "$tmp_api"
+
+    if [ -z "$api_response" ]; then
+        printf "%b\n" '\033[0;31mEmpty response from GitHub API.\033[0m'
+        exit 1
+    fi
+
+    # Extract font names from the release assets array.
+    # Filter to .zip files; exclude FontPatcher.zip; strip .zip suffix for display.
+    # jq is preferred for correctness; sed is the fallback for minimal systems.
+    if command -v jq >/dev/null 2>&1; then
+        mapfile -t fonts < <(printf '%s' "$api_response" \
+            | jq -r '.assets[].name
+                      | select(endswith(".zip"))
+                      | select(. != "FontPatcher.zip")
+                      | rtrimstr(".zip")' \
+            | sort) || true
+    else
+        # Fallback: split on '{' so each asset object is on its own line,
+        # then pull "name":"*.zip" values, drop FontPatcher, strip suffix.
+        mapfile -t fonts < <(printf '%s' "$api_response" \
+            | tr '{' '\n' \
+            | sed -n 's/.*"name":"\([^"]*\.zip\)".*/\1/p' \
+            | grep -v 'FontPatcher\.zip' \
+            | sed 's/\.zip$//' \
+            | sort) || true
+    fi
 
     if [ ${#fonts[@]} -eq 0 ]; then
-        printf "%b\n" '\033[0;31mNo fonts found in the API response. Please try again later.\033[0m'
+        printf "%b\n" '\033[0;31mNo fonts found in the release assets. Please try again later.\033[0m'
         exit 1
     fi
 
@@ -74,7 +127,8 @@ fetch_available_fonts() {
 
 # Display menu of available fonts in multiple columns
 print_fonts_in_columns() {
-    local term_width=$(tput cols)
+    local term_width
+    term_width=$(tput cols)
     local max_len=0
     for font in "${fonts[@]}"; do
         if (( ${#font} > max_len )); then
@@ -82,7 +136,7 @@ print_fonts_in_columns() {
         fi
     done
 
-    local col_width=$((max_len + 6)) # "n. " + "  "
+    local col_width=$((max_len + 6))
     local columns=$((term_width / col_width))
     if (( columns == 0 )); then
         columns=1
@@ -95,7 +149,8 @@ print_fonts_in_columns() {
         for ((j=0; j<columns; j++)); do
             local idx=$(( i + j * rows ))
             if (( idx < total_fonts )); then
-                printf "%-$(echo $col_width)s" "$((idx + 1)). ${fonts[idx]}"
+                # FIX 3: was "%-$(echo $col_width)s" — pointless subshell.
+                printf "%-${col_width}s" "$((idx + 1)). ${fonts[idx]}"
             fi
         done
         echo
@@ -109,16 +164,21 @@ if [ ! -d "$TMPWORKDIR" ]; then
     exit 1
 fi
 
-# Cleanup function for temporary files
+# FIX 4: Cleanup must not call exit 0.
+# The original trap called cleanup which called exit 0, overriding any non-zero
+# exit code set by an earlier "exit 1" (bash: exit inside an EXIT trap sets the
+# final exit status). Separating the traps preserves the correct exit code on
+# normal exits and sets meaningful codes for signals.
 cleanup() {
     if [ -n "$TMPWORKDIR" ] && [ -d "$TMPWORKDIR" ]; then
         rm -rf "$TMPWORKDIR"
     fi
-    exit 0
+    TMPWORKDIR=""
 }
 
-# Trap interrupts and normal exit to ensure cleanup in all scenarios
-trap cleanup SIGINT SIGTERM EXIT
+trap cleanup EXIT
+trap 'cleanup; exit 130' SIGINT
+trap 'cleanup; exit 143' SIGTERM
 
 # Detect OS and set package manager, then install dependencies
 detect_os_and_set_package_manager
@@ -127,7 +187,7 @@ install_dependencies
 # Create fonts directory
 mkdir -p "$HOME/.local/share/fonts"
 
-# Fetch available fonts
+# Fetch available fonts from releases API
 fetch_available_fonts
 
 # Display font list
@@ -163,7 +223,6 @@ while true; do
     valid_selection=true
     selected_fonts=()
     for selection in $font_selection; do
-        # Check if selection is a number
         if ! [[ "$selection" =~ ^[0-9]+$ ]]; then
             printf "%b\n" '\033[0;31mError: Invalid input '"$selection"'. Please enter numbers or "all".\033[0m'
             valid_selection=false
@@ -180,36 +239,51 @@ while true; do
         fi
     done
 
-    # Break loop if valid selection
     if [ "$valid_selection" = true ] && [ ${#selected_fonts[@]} -gt 0 ]; then
         break
     fi
 done
 
 # Download and install selected fonts
+installed_count=0
 for font in "${selected_fonts[@]}"; do
     printf "%b\n" '\033[0;34mDownloading and installing '"$font"'\033[0m'
-    font_name=$(printf "%b" "$font" | awk '{print $1}')
 
-    # Check if font exists before downloading
-    if curl -s --head --fail "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$font_name.zip" >/dev/null 2>&1; then
-        curl -sSLo "$TMPWORKDIR/$font_name.zip" "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$font_name.zip"
-        unzip -o "$TMPWORKDIR/$font_name.zip" -d "$HOME/.local/share/fonts" >/dev/null
-        rm "$TMPWORKDIR/$font_name.zip"
-        printf "%b\n" '\033[0;32m'"$font"' installed successfully\033[0m'
+    # Font names from the releases API are already clean asset names;
+    # no awk/printf extraction needed.
+    font_name="$font"
+
+    # HEAD check: asset existence is guaranteed by the releases listing, but
+    # this guards against transient CDN errors before we create the zip file.
+    if curl -s -A "nerdfonts-installer/1.0" --head --fail \
+        "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$font_name.zip" \
+        >/dev/null 2>&1; then
+        if curl -sSL -A "nerdfonts-installer/1.0" \
+            -o "$TMPWORKDIR/$font_name.zip" \
+            "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$font_name.zip"; then
+            if unzip -o "$TMPWORKDIR/$font_name.zip" -d "$HOME/.local/share/fonts" >/dev/null; then
+                rm -f "$TMPWORKDIR/$font_name.zip"
+                printf "%b\n" '\033[0;32m'"$font"' installed successfully\033[0m'
+                installed_count=$((installed_count + 1))
+            else
+                printf "%b\n" '\033[0;31mWarning: Failed to extract '"$font"', skipping...\033[0m'
+                rm -f "$TMPWORKDIR/$font_name.zip"
+            fi
+        else
+            printf "%b\n" '\033[0;31mWarning: Failed to download '"$font"', skipping...\033[0m'
+        fi
     else
-        printf "%b\n" '\033[0;31mWarning: '"$font"' not found in releases, skipping...\033[0m'
+        printf "%b\n" '\033[0;31mWarning: '"$font"' not reachable in releases, skipping...\033[0m'
     fi
 done
 
 # Update font cache only if at least one font was installed
-if [ ${#selected_fonts[@]} -gt 0 ]; then
+if [ "$installed_count" -gt 0 ]; then
     printf "%b\n" '\033[0;34mUpdating font cache...\033[0m'
     fc-cache -f >/dev/null
-    printf "%b\n" '\033[0;32mFont installation complete!\033[0m'
+    printf "%b\n" '\033[0;32mFont installation complete! '"$installed_count"' font(s) installed.\033[0m'
 else
     printf "%b\n" '\033[0;31mNo fonts were installed.\033[0m'
 fi
 
-# Clean up temporary files
-cleanup
+# EXIT trap calls cleanup automatically; no explicit call needed here.

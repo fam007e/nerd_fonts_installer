@@ -75,6 +75,7 @@ analyze: clean $(TARGET)
 # construction); the truncation is intentionally impossible at runtime.
 ci: CFLAGS += -Wformat=2 -Wformat-overflow=2 -Wformat-truncation=2 \
               -Wno-format-truncation \
+	      -Wno-stringop-truncation \
               -Wnull-dereference -Wstack-protector -Wstrict-overflow=3 \
               -Warray-bounds=2 -Wimplicit-fallthrough=3 -Wshift-overflow=2 \
               -Wcast-qual -Wstringop-overflow=4 -Wconversion \

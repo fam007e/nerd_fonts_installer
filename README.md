@@ -13,7 +13,7 @@
 
 - **🐧 Cross-platform Support** - Works on Arch, Debian, Ubuntu, Fedora, CentOS, RHEL, and Linux Mint
 - **📦 Automatic Dependencies** - Installs `curl`, `unzip`, and `fontconfig` automatically
-- **🔍 Live Font Discovery** - Fetches current font list from Nerd Fonts GitHub API
+- **🔍 Live Font Discovery** - Fetches current font list from Nerd Fonts **Releases API** (more reliable, no more 404 mismatches)
 - **🎯 Interactive Selection** - Choose specific fonts or install all with one command
 - **🏠 Smart Installation** - Installs to `~/.local/share/fonts` with automatic cache updates
 - **🎨 Beautiful Interface** - Colorful terminal output for better user experience
@@ -25,7 +25,7 @@
 
 ## 🚀 Quick Start
 > [!IMPORTANT]
-> **Security Notice**: Please ensure you are using version `v2026.01.09` or newer. Older versions are considered unsupported.
+> **Security Notice**: Please ensure you are using version `v2026.06` (or newer). Older versions using the old Contents API are deprecated.
 
 ### One-Line Installation (Recommended)
 
