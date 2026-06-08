@@ -14,6 +14,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
+// cppcheck-suppress missingIncludeSystem
 #include <stdint.h>
 
 // ANSI Color codes

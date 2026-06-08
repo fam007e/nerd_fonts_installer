@@ -1,6 +1,0 @@
-engines:
-  cppcheck:
-    enabled: true
-    options:
-      suppress:
-        - missingInclude
