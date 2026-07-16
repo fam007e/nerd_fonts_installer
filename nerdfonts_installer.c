@@ -287,11 +287,11 @@ static const char *detect_os_and_get_package_manager(void) {
         strcmp(os_id, "rocky")  == 0 || strcmp(os_id, "almalinux") == 0)
         return "sudo yum install -y";
 
-    if (strcmp(os_id, "arch")        == 0 || strcmp(os_id, "manjaro")     == 0 ||
-        strcmp(os_id, "endeavouros") == 0 || strcmp(os_id, "cachyos")     == 0 ||
-        strcmp(os_id, "garuda")      == 0 || strcmp(os_id, "artix")       == 0 ||
-        strcmp(os_id, "arco")        == 0 || strcmp(os_id, "steamos")     == 0 ||
-        strcmp(os_id, "blackarch")   == 0)
+    if (strcmp(os_id, "arch")        == 0 || strcmp(os_id, "manjaro") == 0 ||
+        strcmp(os_id, "endeavouros") == 0 || strcmp(os_id, "cachyos") == 0 ||
+        strcmp(os_id, "garuda")      == 0 || strcmp(os_id, "artix")   == 0 ||
+        strcmp(os_id, "arco")        == 0 || strcmp(os_id, "steamos") == 0 ||
+        strcmp(os_id, "blackarch")   == 0 || strcmp(os_id, "omarchy") == 0)
         return "sudo pacman -Syu --noconfirm";
 
     printf("%sUnsupported OS: %s\n%s", COLOR_RED, os_id, COLOR_RESET);
