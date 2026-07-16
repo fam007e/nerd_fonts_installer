@@ -331,11 +331,13 @@ Thank you to everyone who has contributed to the development of `nerd_fonts_inst
 
 <div align="center">
 
-### 🌟 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=fam007e/nerd_fonts_installer&type=Date)](https://star-history.com/#fam007e/nerd_fonts_installer&Date)
-
----
+<a href="https://www.star-history.com/?repos=fam007e%2Fnerd_fonts_installer&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=fam007e/nerd_fonts_installer&type=date&theme=dark&legend=top-left&sealed_token=j-2kuZaCiATrKCmtE9Wkgg7Xd7ElJ5MUmg_TCB0pKxj8uoF5KtU3oLEgsfqs7J0MWXI1NesuiMQv8-xmU7ZiGnM4MvIbGsASAJMM4SZcYN6ZhZYvS5DUyg7u_EgdASf2MozFvBi2uwL7jduutn_68pZ9tHnDNz_0HRdYJhncfK6s1Q2WYyJjjvhH1Jd3" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=fam007e/nerd_fonts_installer&type=date&legend=top-left&sealed_token=j-2kuZaCiATrKCmtE9Wkgg7Xd7ElJ5MUmg_TCB0pKxj8uoF5KtU3oLEgsfqs7J0MWXI1NesuiMQv8-xmU7ZiGnM4MvIbGsASAJMM4SZcYN6ZhZYvS5DUyg7u_EgdASf2MozFvBi2uwL7jduutn_68pZ9tHnDNz_0HRdYJhncfK6s1Q2WYyJjjvhH1Jd3" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=fam007e/nerd_fonts_installer&type=date&legend=top-left&sealed_token=j-2kuZaCiATrKCmtE9Wkgg7Xd7ElJ5MUmg_TCB0pKxj8uoF5KtU3oLEgsfqs7J0MWXI1NesuiMQv8-xmU7ZiGnM4MvIbGsASAJMM4SZcYN6ZhZYvS5DUyg7u_EgdASf2MozFvBi2uwL7jduutn_68pZ9tHnDNz_0HRdYJhncfK6s1Q2WYyJjjvhH1Jd3" />
+ </picture>
+</a>
 
 **💖 Made with love for the Linux community**
 
