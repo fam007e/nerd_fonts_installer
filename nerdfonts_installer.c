@@ -393,11 +393,11 @@ static void create_directories(void) {
         exit(1);
     }
 
-    if (create_directory_secure(fonts_path) != 0) {
-        // EEXIST is normal for returning users; create_directory_secure already
-        // handles it silently. Any other failure is non-fatal: fonts may still
-        // install if the directory was created by another means.
-    }
+    // EEXIST is normal for returning users; create_directory_secure already
+    // handles it silently. Any other failure is non-fatal: fonts may still
+    // install if the directory was created by another means, so the return
+    // value is intentionally discarded here.
+    (void)create_directory_secure(fonts_path);
 }
 
 // Fetch available fonts from the GitHub Releases API and populate fonts[].
