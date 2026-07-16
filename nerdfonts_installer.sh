@@ -16,7 +16,7 @@ detect_os_and_set_package_manager() {
             centos|rhel|rocky|almalinux)
                 PKG_MANAGER="sudo yum install -y"
                 ;;
-            arch|manjaro|endeavouros|cachyos|garuda|artix|arco|steamos|blackarch)
+            arch|manjaro|endeavouros|cachyos|omarchy|garuda|artix|arco|steamos|blackarch)
                 PKG_MANAGER="sudo pacman -Syu --noconfirm"
                 ;;
             *)
