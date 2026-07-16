@@ -11,7 +11,7 @@
 
 ## ✨ Features
 
-- **🐧 Cross-platform Support** - Works on Arch, Debian, Ubuntu, Fedora, CentOS, RHEL, and Linux Mint
+- **🐧 Cross-platform Support** - Works on Arch, Omarchy, Manjaro, EndeavourOS, Debian, Ubuntu, Linux Mint, Fedora, CentOS, RHEL, Rocky Linux, and AlmaLinux
 - **📦 Automatic Dependencies** - Installs `curl`, `unzip`, and `fontconfig` automatically
 - **🔍 Live Font Discovery** - Fetches current font list from Nerd Fonts **Releases API** (more reliable, no more 404 mismatches)
 - **🎯 Interactive Selection** - Choose specific fonts or install all with one command
@@ -25,7 +25,7 @@
 
 ## 🚀 Quick Start
 > [!IMPORTANT]
-> **Security Notice**: Please ensure you are using version `v2026.06` (or newer). Older versions using the old Contents API are deprecated.
+> **Security Notice**: Please ensure you are using version `v2026.07` (or newer). Older versions using the old Contents API are deprecated and do not have the new OS/distro support.
 
 ### One-Line Installation (Recommended)
 
@@ -87,7 +87,7 @@ sudo apt-get install build-essential libcurl4-openssl-dev libjansson-dev
 # Fedora
 sudo dnf install gcc make libcurl-devel jansson-devel
 
-# CentOS / RHEL
+# CentOS / RHEL / Rocky Linux / AlmaLinux
 sudo yum install gcc make libcurl-devel jansson-devel
 ```
 
@@ -176,6 +176,9 @@ chmod +x nerdfonts_installer.sh
 | **Fedora 34+** | `dnf` | ✅ | ✅ | Recent versions |
 | **CentOS 7/8** | `yum` | ✅ | ❌ | **Use Shell Script** (Binary requires new GLIBC) |
 | **RHEL 7/8/9** | `yum` | ✅ | ⚠️ | RHEL 9 OK, older usage Shell Script |
+| **Rocky Linux** | `yum` | ✅ | ⚠️ | Detected as of latest release; binary compatibility untested |
+| **AlmaLinux** | `yum` | ✅ | ⚠️ | Detected as of latest release; binary compatibility untested |
+| **Omarchy** | `pacman` | ✅ | ⚠️ | Detected as of latest release; binary compatibility untested |
 
 > **Note**: The C Binary is built on Ubuntu Latest and requires a recent GLIBC. For older distributions (CentOS 7, Ubuntu 18.04, etc.), please use the **Shell Script** version.
 
