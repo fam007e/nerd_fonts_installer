@@ -13,7 +13,7 @@ detect_os_and_set_package_manager() {
             fedora)
                 PKG_MANAGER="sudo dnf install -y"
                 ;;
-            centos|rhel)
+            centos|rhel|rocky|almalinux)
                 PKG_MANAGER="sudo yum install -y"
                 ;;
             arch|manjaro|endeavouros|cachyos|garuda|artix|arco|steamos|blackarch)

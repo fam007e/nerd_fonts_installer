@@ -283,7 +283,8 @@ static const char *detect_os_and_get_package_manager(void) {
     if (strcmp(os_id, "fedora") == 0)
         return "sudo dnf install -y";
 
-    if (strcmp(os_id, "centos") == 0 || strcmp(os_id, "rhel") == 0)
+    if (strcmp(os_id, "centos") == 0 || strcmp(os_id, "rhel")   == 0 ||
+        strcmp(os_id, "rocky")  == 0 || strcmp(os_id, "almalinux") == 0)
         return "sudo yum install -y";
 
     if (strcmp(os_id, "arch")        == 0 || strcmp(os_id, "manjaro")     == 0 ||
