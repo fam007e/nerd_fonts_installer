@@ -294,6 +294,9 @@ static const char *detect_os_and_get_package_manager(void) {
         strcmp(os_id, "blackarch")   == 0 || strcmp(os_id, "omarchy") == 0)
         return "sudo pacman -Syu --noconfirm";
 
+    if (strcmp(os_id, "void") == 0)
+        return "sudo xbps-install -Sy";
+
     printf("%sUnsupported OS: %s\n%s", COLOR_RED, os_id, COLOR_RESET);
     exit(1);
 }

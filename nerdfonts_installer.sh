@@ -19,6 +19,9 @@ detect_os_and_set_package_manager() {
             arch|manjaro|endeavouros|cachyos|omarchy|garuda|artix|arco|steamos|blackarch)
                 PKG_MANAGER="sudo pacman -Syu --noconfirm"
                 ;;
+            void)
+                PKG_MANAGER="sudo xbps-install -Sy"
+                ;;
             *)
                 printf "%b\n" '\033[0;31mUnsupported OS: '"$ID"'\033[0m'
                 exit 1

@@ -11,7 +11,7 @@
 
 ## ✨ Features
 
-- **🐧 Cross-platform Support** - Works on Arch, Omarchy, Manjaro, EndeavourOS, Debian, Ubuntu, Linux Mint, Fedora, CentOS, RHEL, Rocky Linux, and AlmaLinux
+- **🐧 Cross-platform Support** - Works on Arch, Omarchy, Manjaro, EndeavourOS, Debian, Ubuntu, Linux Mint, Fedora, CentOS, RHEL, Rocky Linux, AlmaLinux, and Void Linux
 - **📦 Automatic Dependencies** - Installs `curl`, `unzip`, and `fontconfig` automatically
 - **🔍 Live Font Discovery** - Fetches current font list from Nerd Fonts **Releases API** (more reliable, no more 404 mismatches)
 - **🎯 Interactive Selection** - Choose specific fonts or install all with one command
@@ -89,6 +89,9 @@ sudo dnf install gcc make libcurl-devel jansson-devel
 
 # CentOS / RHEL / Rocky Linux / AlmaLinux
 sudo yum install gcc make libcurl-devel jansson-devel
+
+# Void Linux
+sudo xbps-install -Sy gcc make libcurl-devel jansson-devel
 ```
 
 **Build and install:**
@@ -179,6 +182,7 @@ chmod +x nerdfonts_installer.sh
 | **Rocky Linux** | `yum` | ✅ | ⚠️ | Detected as of latest release; binary compatibility untested |
 | **AlmaLinux** | `yum` | ✅ | ⚠️ | Detected as of latest release; binary compatibility untested |
 | **Omarchy** | `pacman` | ✅ | ⚠️ | Detected as of latest release; binary compatibility untested |
+| **Void Linux** | `xbps-install` | ✅ | ✅ | Full compatibility |
 
 > **Note**: The C Binary is built on Ubuntu Latest and requires a recent GLIBC. For older distributions (CentOS 7, Ubuntu 18.04, etc.), please use the **Shell Script** version.
 
